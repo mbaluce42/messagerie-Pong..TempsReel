@@ -136,36 +136,81 @@ int main(int argc, char *argv[])
     }
 
     std::cout << "Connected to the server" << std::endl;
+
+    bool focus;
+
+        // Clear everything from the last frame
+        window.clear(Color(0, 0, 0,255));
+
+        window.draw(bat.getShape());
+
+        window.draw(ball.getShape());
+
+        window.draw(enemy_bat.getShape());
+
+        // Draw our score
+
+        // draw separator
+        for (int i = 0; i<16;i++){
+            window.draw(separators[i]);
+        }
+        // Show everything we just drew
+        window.display();
+
     
 
     while (window.isOpen())
     {
-        sf::Event event;
+        Event event;
+
         while (window.pollEvent(event))
         {
-            if (event.type == sf::Event::Closed)
+            if (event.type == Event::Closed)
+                // Someone closed the window- bye
                 window.close();
+        else if(event.type == sf::Event::GainedFocus) focus=true;
+        else if(event.type == sf::Event::LostFocus) focus=false;
         }
 
-        // Send bat position to the server
-        Vector2f batPos;
-        if (Keyboard::isKeyPressed(Keyboard::Up))
+        if(focus)
         {
-            // Move bat up
-            bat.moveUp();
-            batPos = Vector2f(bat.getPosition().width , bat.getPosition().height);
-            client.send((char*)&batPos);
+            // Send bat position to the server
+            Vector2f batPos;
+            if (Keyboard::isKeyPressed(Keyboard::Up))
+            {
+                // Move bat up
+                bat.moveUp();
+                batPos = Vector2f(bat.getPosition().width , bat.getPosition().height);
+                client.send((char*)&batPos);
+            }
+            else if (Keyboard::isKeyPressed(Keyboard::Down))
+            {
+                // Move bat down
+                bat.moveDown();
+                batPos = sf::Vector2f(bat.getPosition().width , bat.getPosition().height);
+                client.send((char*)&batPos);
+            }
+
+            if (Keyboard::isKeyPressed(Keyboard::Z)){
+                if(enemy_bat.getPosition().top > 0)
+                    enemy_bat.moveUp();
+                    batPos = Vector2f(enemy_bat.getPosition().width , enemy_bat.getPosition().height);
+
+            }
+            else if (Keyboard::isKeyPressed(Keyboard::S))
+            {
+                if(enemy_bat.getPosition().top < windowHeight - enemy_bat.getShape().getSize().y)
+                    enemy_bat.moveDown();
+                    batPos = Vector2f(enemy_bat.getPosition().width , enemy_bat.getPosition().height);
+            }
+
+            if (Keyboard::isKeyPressed(sf::Keyboard::Escape))
+            {
+                // quit...
+                // Someone closed the window- bye
+                window.close();
+            }
         }
-        else if (Keyboard::isKeyPressed(Keyboard::Down))
-        {
-            // Move bat down
-            bat.moveDown();
-            batPos = sf::Vector2f(bat.getPosition().width , bat.getPosition().height);
-            client.send((char*)&batPos);
-        }
-
-
-
 
 
         // Receive positions from the server

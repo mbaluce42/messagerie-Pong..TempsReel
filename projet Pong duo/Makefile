@@ -1,3 +1,4 @@
+all: serveur client
 
 serveur: serveur.o GameServer.o GameClient.o bat.o ball.o
 	g++ -o serveur serveur.o GameServer.o GameClient.o bat.o ball.o -lsfml-graphics -lsfml-window -lsfml-system

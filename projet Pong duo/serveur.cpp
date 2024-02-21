@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
     int scoreCl1=0, scoreCl2=0;
 
     cout << "(SERVEUR)Jeu a commencé" << endl;
+    ball.start();
 
     while (start==true)
     {
