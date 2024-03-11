@@ -82,6 +82,10 @@ int main(int argc, char *argv[])
 #include <SFML/Graphics.hpp>
 #include "bat.h"
 #include "ball.h"
+#include <string>
+
+using namespace std;
+using namespace sf;
 
 int main(int argc, char *argv[])
 {
@@ -165,49 +169,84 @@ int main(int argc, char *argv[])
 
         while (window.pollEvent(event))
         {
-            if (event.type == Event::Closed)
+            if (event.type == Event::Closed){
                 // Someone closed the window- bye
-                window.close();
+                client.send("CLOSE");
+                window.close();}
         else if(event.type == sf::Event::GainedFocus) focus=true;
         else if(event.type == sf::Event::LostFocus) focus=false;
         }
 
         if(focus)
         {
+            string batData="";
+            string enemyBatData="";
             // Send bat position to the server
-            Vector2f batPos;
             if (Keyboard::isKeyPressed(Keyboard::Up))
             {
                 // Move bat up
-                bat.moveUp();
-                batPos = Vector2f(bat.getPosition().width , bat.getPosition().height);
-                client.send((char*)&batPos);
+                /*if(bat.getPosition().top > 0)
+                {*/
+                    //bat.moveUp();
+                    batData += "1Up,";
+                    batData += to_string(bat.getPosition().left)+","+ to_string(bat.getPosition().top);
+                    batData += to_string(bat.getShape().getSize().x) +","+ to_string(bat.getShape().getSize().y);
+                    status= client.send( (char*)(batData.c_str()) );
+                    if (status != OK)
+                    {
+                        std::cout << "Error sending bat position: " << status << std::endl;
+                        return status;
+                    }
+
+                    char batData[1024]; char enemyBatData[1024];
+
+                    client.receive(batData);
+                    istringstream iss(batData);// flux iss  va permettre d'extrire les variable de la chaine de caractère
+                    float posLeft, posTop;
+                    // Récupérer la position
+                    iss >>posLeft >> posTop;
+                    bat = Bat(posLeft, posTop);
+
+                //}
+                
             }
             else if (Keyboard::isKeyPressed(Keyboard::Down))
             {
                 // Move bat down
-                bat.moveDown();
-                batPos = sf::Vector2f(bat.getPosition().width , bat.getPosition().height);
-                client.send((char*)&batPos);
+                //if(bat.getPosition().top < windowHeight - bat.getShape().getSize().y)
+                //bat.moveDown();
+                batData += "1Down,";
+                batData += to_string(bat.getPosition().left)+","+ to_string(bat.getPosition().top);
+                batData += to_string(bat.getShape().getSize().x) +","+ to_string(bat.getShape().getSize().y);
+
+                client.send( (char*)(batData.c_str()) );
+                client.receive((char*)&enemy_bat.getPosition());
             }
 
             if (Keyboard::isKeyPressed(Keyboard::Z)){
-                if(enemy_bat.getPosition().top > 0)
-                    enemy_bat.moveUp();
-                    batPos = Vector2f(enemy_bat.getPosition().width , enemy_bat.getPosition().height);
+                /*if(enemy_bat.getPosition().top > 0)
+                    enemy_bat.moveUp();*/
+                enemyBatData += "2Up,";
+                enemyBatData += to_string(enemy_bat.getPosition().left)+","+ to_string(enemy_bat.getPosition().top);
+                enemyBatData += to_string(enemy_bat.getShape().getSize().x) +","+ to_string(enemy_bat.getShape().getSize().y);
+                client.send( (char*)(enemyBatData.c_str()) );
 
             }
             else if (Keyboard::isKeyPressed(Keyboard::S))
             {
-                if(enemy_bat.getPosition().top < windowHeight - enemy_bat.getShape().getSize().y)
-                    enemy_bat.moveDown();
-                    batPos = Vector2f(enemy_bat.getPosition().width , enemy_bat.getPosition().height);
+                //if(enemy_bat.getPosition().top < windowHeight - enemy_bat.getShape().getSize().y)
+                    //enemy_bat.moveDown();
+                    enemyBatData += "2Down,";
+                    enemyBatData += to_string(enemy_bat.getPosition().left)+","+ to_string(enemy_bat.getPosition().top);
+                    enemyBatData += to_string(enemy_bat.getShape().getSize().x) +","+ to_string(enemy_bat.getShape().getSize().y);
+                    client.send( (char*)(enemyBatData.c_str()) );
             }
 
             if (Keyboard::isKeyPressed(sf::Keyboard::Escape))
             {
                 // quit...
                 // Someone closed the window- bye
+                client.send("ESC");
                 window.close();
             }
         }

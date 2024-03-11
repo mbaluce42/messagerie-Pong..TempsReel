@@ -102,10 +102,148 @@ int main(int argc, char *argv[])
     {
         //recoit les positions des bats
         cout << "(SERVEUR)En attente d'avoir les positions des bats des clients" << endl;
-        Vector2f posBatC1, posBatC2;
+        char batData[1024]; char enemyBatData[1024];
+        string batSendData = "";
 
-        status=client1.receive((char*)&posBatC1);
-        if(status == OK){cout << "(SERVEUR)Position bat client 1 reçu" << endl;}
+        status=client1.receive(batData);
+        if(status == OK)
+        {
+            cout << "(SERVEUR)Position bat client 1 reçu" << endl;
+            // Analyser les données
+            istringstream iss(batData);// flux iss  va permettre d'extrire les variable 
+            string movType;
+            float posLeft, posTop, sizeX, sizeY;
+            // Récupérer la position
+            iss >>movType >>posLeft >> posTop>> sizeX>>sizeY;
+            if(movType=="1Up")
+            {
+                batC1= Bat(posLeft, posTop);
+                if(batC1.getPosition().top > 0)
+                {
+                    batC1.moveUp();
+                    batSendData="";
+                    batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top);
+                    status = client1.send((char*)batSendData.c_str());
+                    if(status == SEND_ERROR)
+                    {
+                        cout << "(SERVEUR)Erreur d'envoi position bat client 1 vers lui meme" << endl;
+                        return status;
+                    }
+                    else
+                    {
+                        cout << "(SERVEUR)Position bat client 1 vers lui meme envoyé avec succes" << endl;
+                    }
+                    status = client2.send((char*)batSendData.c_str());
+                    if(status == SEND_ERROR)
+                    {
+                        cout << "(SERVEUR)Erreur d'envoi position bat client 1 vers cleint 2" << endl;
+                        return status;
+                    }
+                    else
+                    {
+                        cout << "(SERVEUR)Position bat client 1 vers client 2 envoyé avec succes" << endl;
+                    }
+                }
+
+            }
+            else if(movType=="2UP")
+            {
+                batC2= Bat(posLeft, posTop);
+                if(batC2.getPosition().top > 0)
+                {
+                    batC2.moveUp();
+                    batSendData="";
+                    batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);
+                    status = client2.send((char*)batSendData.c_str());
+                    if(status == SEND_ERROR)
+                    {
+                        cout << "(SERVEUR)Erreur d'envoi position bat client 2 vers lui meme" << endl;
+                        return status;
+                    }
+                    else
+                    {
+                        cout << "(SERVEUR)Position bat client 2 vers lui meme envoyé avec succes" << endl;
+                    }
+                    status = client1.send((char*)batSendData.c_str());
+                    if(status == SEND_ERROR)
+                    {
+                        cout << "(SERVEUR)Erreur d'envoi position bat client 2 vers cleint 1" << endl;
+                        return status;
+                    }
+                    else
+                    {
+                        cout << "(SERVEUR)Position bat client 2 vers client 1 envoyé avec succes" << endl;
+                    }
+                }
+
+            }
+            else if (movType=="1Down")
+            {
+                batC1= Bat(posLeft, posTop);
+                if(batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
+                {
+                    batC1.moveDown();
+                    batSendData="";
+                    batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top);
+                    status = client1.send((char*)batSendData.c_str());
+                    if(status == SEND_ERROR)
+                    {
+                        cout << "(SERVEUR)Erreur d'envoi position bat client 1 vers lui meme" << endl;
+                        return status;
+                    }
+                    else
+                    {
+                        cout << "(SERVEUR)Position bat client 1 vers lui meme envoyé avec succes" << endl;
+                    }
+                    status = client2.send((char*)batSendData.c_str());
+                    if(status == SEND_ERROR)
+                    {
+                        cout << "(SERVEUR)Erreur d'envoi position bat client 1 vers cleint 2" << endl;
+                        return status;
+                    }
+                    else
+                    {
+                        cout << "(SERVEUR)Position bat client 1 vers client 2 envoyé avec succes" << endl;
+                    }
+
+                }
+
+
+            }
+            
+            else if (movType=="2Down")
+            {
+                batC2= Bat(posLeft, posTop);
+                if(batC2.getPosition().top < windowHeight - batC2.getShape().getSize().y)
+                {
+                    batC2.moveDown();
+                    batSendData="";
+                    batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);
+                    status = client2.send((char*)batSendData.c_str());
+                    if(status == SEND_ERROR)
+                    {
+                        cout << "(SERVEUR)Erreur d'envoi position bat client 2 vers lui meme" << endl;
+                        return status;
+                    }
+                    else
+                    {
+                        cout << "(SERVEUR)Position bat client 2 vers lui meme envoyé avec succes" << endl;
+                    }
+                    status = client1.send((char*)batSendData.c_str());
+                    if(status == SEND_ERROR)
+                    {
+                        cout << "(SERVEUR)Erreur d'envoi position bat client 2 vers cleint 1" << endl;
+                        return status;
+                    }
+                    else
+                    {
+                        cout << "(SERVEUR)Position bat client 2 vers client 1 envoyé avec succes" << endl;
+                    }
+                
+                }
+                
+            }
+        }
         else
         {
             cout << "(SERVEUR)Erreur de reception position bat client 1" << endl;
@@ -113,7 +251,7 @@ int main(int argc, char *argv[])
         } 
         
 
-        status=client2.receive((char*)&posBatC2);
+        status=client2.receive(enemyBatData);
         if(status == OK){cout << "(SERVEUR)Position bat client 2 reçu" << endl;}
         else
         {
