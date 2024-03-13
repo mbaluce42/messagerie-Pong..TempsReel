@@ -12,4 +12,5 @@ class GameServer{
         GameServer(int);
         int initialize();
         int acceptClient(GameClient*);
+	~GameServer();
 };

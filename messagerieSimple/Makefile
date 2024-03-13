@@ -1,18 +1,9 @@
-all: serveur client
+CC=g++
+all: GameClient.o GameServer.o
 
-serveur: serveur.o GameServer.o GameClient.o 
-	g++ -o serveur serveur.o GameServer.o GameClient.o
-
-client: client.o GameClient.o
-	g++ -o client client.o GameClient.o 
-	
-serveur.o: serveur.cpp
-	g++ -c serveur.cpp
-
-GameServer.o: GameServer.cpp GameServer.h
-	g++ -c GameServer.cpp
-
-GameClient.o: GameClient.cpp GameClient.h
-	g++ -c GameClient.cpp
+GameClient.o:
+	$(CC) -c GameClient.cpp
+GameServer.o:
+	$(CC) -c GameServer.cpp
 clean:
 	rm *.o

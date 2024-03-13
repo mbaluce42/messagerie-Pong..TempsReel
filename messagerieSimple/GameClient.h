@@ -15,7 +15,7 @@ class GameClient{
         GameClient(mysocket, mysocket);
         ~GameClient();
         int join(char*, int);
-        int send(const char*);
+        int send(char*);
         int receive(char*);
         void setReceiveSocket(mysocket);
         void setSendSocket(mysocket);

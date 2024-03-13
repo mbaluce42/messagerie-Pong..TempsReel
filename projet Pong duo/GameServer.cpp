@@ -14,6 +14,8 @@ int GameServer::initialize(){
     if(sock == -1){
         return SOCKET_ERROR;
     }
+	int tru = 1;
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &tru, sizeof(int));
     struct sockaddr_in serveraddr;
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = INADDR_ANY;
@@ -96,4 +98,10 @@ int GameServer::acceptClient(GameClient* gameClient){
     return ERROR;
 
 
+}
+
+GameServer::~GameServer(){
+	if(this->status == READY){
+		close(this->sock.socket);
+	}
 }

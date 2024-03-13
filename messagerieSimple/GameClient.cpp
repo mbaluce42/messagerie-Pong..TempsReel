@@ -95,7 +95,7 @@ int GameClient::join(char* addr, int port){
 
 }
 
-int GameClient::send(const char* msg){
+int GameClient::send(char* msg){
     if(this->client_status!=READY){
         return NOT_READY;
     }
