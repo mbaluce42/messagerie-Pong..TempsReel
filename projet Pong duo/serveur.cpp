@@ -415,20 +415,25 @@ int main(int argc, char *argv[])
         }
 
 
+        //send all info to clients
 
-        float oldPosX = ball.getPosition().left;
-        //bat.update();
+       /* float oldPosX = ball.getPosition().left;
+        //batC1.update();//bat.update();
         ball.update();
-        std::stringstream ss;
-        ss << scoreC1<< "\t" << scoreC2;
-        //enemy_bat.update();
+        /*std::stringstream ss;
+        ss << scoreC1<< "\t" << scoreC2;*/
+        //batC2.update();//enemy_bat.update();*/
 
 
 
         string ballData="";
-        ballData += to_string(ball.getPosition().left)+","+ to_string(ball.getPosition().top)+","+ to_string(ss.str());
-        status = client1.send((char*)ballData.c_str());
-        if(status != 0K)
+        batSendData="";       
+        ballData += to_string(ball.getPosition().left)+","+ to_string(ball.getPosition().top)+","+ to_string(scoreC1)+","+ to_string(scoreC2)+",";
+        batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top)+",";
+        batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);
+        
+        status = client1.send((char*)(ballData + batSendData).c_str());
+        if(status != OK)
         {
             cout << "(SERVEUR)Erreur d'envoi position ball vers client 1" << endl;
             return status;
@@ -438,8 +443,12 @@ int main(int argc, char *argv[])
             cout << "(SERVEUR)Position ball vers client 1 envoyé avec succes" << endl;
         }
 
-        status = client2.send((char*)ballData.c_str());
-        if(status != 0K)
+        batSendData="";
+        batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top)+",";
+        batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top);
+        
+        status = client2.send((char*)(ballData + batSendData).c_str());
+        if(status != OK)
         {
             cout << "(SERVEUR)Erreur d'envoi position ball vers client 2" << endl;
             return status;
@@ -449,28 +458,6 @@ int main(int argc, char *argv[])
             cout << "(SERVEUR)Position ball vers client 2 envoyé avec succes" << endl;
         }
 
-
-
-        /*hud.setString(ss.str());
-
-        // Clear everything from the last frame
-        window.clear(Color(0, 0, 0,255));
-
-        window.draw(bat.getShape());
-
-        window.draw(ball.getShape());
-
-        window.draw(enemy_bat.getShape());
-
-        // Draw our score
-        window.draw(hud);
-
-        // draw separator
-        for (int i = 0; i<16;i++){
-            window.draw(separators[i]);
-        }
-        // Show everything we just drew
-        window.display();*/
         
     }// This is the end of the "while" loop
 

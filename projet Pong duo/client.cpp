@@ -91,6 +91,8 @@ int main(int argc, char *argv[])
 {
     int windowWidth = 1024;
     int windowHeight = 768;
+    int scoreC1 = 0;
+    int scoreC2 = 0;
 
     if (argc < 3)
     {
@@ -251,32 +253,38 @@ int main(int argc, char *argv[])
             }
         }
 
+        // Receive updated position of the ball, bats and score from the server
 
-        // Receive positions from the server
-        Vector2f posBat;
-        status = client.receive((char*)&posBat);
-        if (status != OK)
-        {
-            std::cout << "Error receiving bat position: " << status << std::endl;
-            return status;
-        }
+        /*ballData += to_string(ball.getPosition().left)+","+ to_string(ball.getPosition().top)+","+ to_string(scoreC1)+","+ to_string(scoreC2)+",";
+        batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top)+",";
+        batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);*/
 
-        // Update bats
-        bat.setYPosition(posBat.y);
-        enemy_bat.update();
+        char AllData[1024];
+        client.receive(AllData);
+        istringstream iss(AllData);// flux iss  va permettre d'extrire les variable de la chaine de caractère
+        float ballLeft, ballTop, batC1Left, batC1Top, batC2Left, batC2Top;
 
-        // Update ball
-        ball.update();
+        iss >>ballLeft >> ballTop >> scoreC1 >> scoreC2 >> batC1Left >> batC1Top >> batC2Left >> batC2Top;
+        
+        hud.setString(ss.str());
 
-        // Clear window
-        window.clear(sf::Color::Black);
+        // Clear everything from the last frame
+        window.clear(Color(0, 0, 0,255));
 
-        // Draw bats and ball
         window.draw(bat.getShape());
-        window.draw(enemy_bat.getShape());
+
         window.draw(ball.getShape());
 
-        // Display window
+        window.draw(enemy_bat.getShape());
+
+        // Draw our score
+        window.draw(hud);
+
+        // draw separator
+        for (int i = 0; i<16;i++){
+            window.draw(separators[i]);
+        }
+        // Show everything we just drew
         window.display();
     }
 
