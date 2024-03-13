@@ -211,7 +211,6 @@ int main(int argc, char *argv[])
                     }*/
                 }
             }
-            
             else if (movType=="2Down")
             {
                 batC2= Bat(posLeft, posTop);
@@ -241,6 +240,10 @@ int main(int argc, char *argv[])
                         cout << "(SERVEUR)Position bat client 2 vers client 1 envoyé avec succes" << endl;
                     }*/
                 }   
+            }
+            else
+            {
+                cout <<endl<< "!! (SERVEUR)CLIENT 1 N'AS PAS MOVE !!" << endl;
             }
         }
         else
@@ -379,6 +382,10 @@ int main(int argc, char *argv[])
                         cout << "(SERVEUR)Position bat client 1 vers client 2 envoyé avec succes" << endl;
                     }*/
                 }
+            }
+            else
+            {
+                cout <<endl<< "!! (SERVEUR)CLIENT 1 N'AS PAS MOVE !!" << endl;
             }
         }
         else

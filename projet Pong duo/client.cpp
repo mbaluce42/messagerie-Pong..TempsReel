@@ -172,16 +172,33 @@ int main(int argc, char *argv[])
         {
             if (event.type == Event::Closed){
                 // Someone closed the window- bye
-                window.close();}
-        else if(event.type == sf::Event::GainedFocus) focus=true;
-        else if(event.type == sf::Event::LostFocus) focus=false;
+                window.close(); cout<<endl<<"(CLIENT)Fenetre fermée" << endl;}
+        else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active 1" << endl;}
+        else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
         }
 
         if(focus)
         {
+            cout<<endl<<"(CLIENT)Fenetre active 2" << endl;
             string batData="";
             string enemyBatData="";
             // Send bat position to the server
+            /*else
+        {*/
+            cout <<endl << "(CLIENT)Fenetre non active" << endl;
+            batData += "NOT,0,0,0,0";
+            status=client.send( (char*)(batData.c_str()) );
+                if (status != OK)
+                {
+                    cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
+                    return status;
+                }
+                else
+                {
+                    cout<<"(CLIENT)Position du enemyBat envoyé au serveur (2Down[S])"<<endl;
+                }
+
+        //}
             if (Keyboard::isKeyPressed(Keyboard::Up))
             {
                 // Move bat up
@@ -278,10 +295,11 @@ int main(int argc, char *argv[])
             {
                 // quit...
                 // Someone closed the window- bye
-                client.send("ESC");
                 window.close();
             }
         }
+
+        cout <<endl << "avant receive" << endl;
 
         // Receive updated position of the ball, bats and score from the server
 
