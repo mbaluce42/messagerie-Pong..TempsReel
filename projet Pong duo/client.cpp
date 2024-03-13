@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
         {
             if (event.type == Event::Closed){
                 // Someone closed the window- bye
-                client.send("CLOSE");
+                //client.send("CLOSE");
                 window.close();}
         else if(event.type == sf::Event::GainedFocus) focus=true;
         else if(event.type == sf::Event::LostFocus) focus=false;
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
                 {*/
                     //bat.moveUp();
                     batData += "1Up,";
-                    batData += to_string(bat.getPosition().left)+","+ to_string(bat.getPosition().top);
+                    batData += to_string(bat.getPosition().left)+","+ to_string(bat.getPosition().top) +",";
                     batData += to_string(bat.getShape().getSize().x) +","+ to_string(bat.getShape().getSize().y);
                     status= client.send( (char*)(batData.c_str()) );
                     if (status != OK)
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
                 //if(bat.getPosition().top < windowHeight - bat.getShape().getSize().y)
                 //bat.moveDown();
                 batData += "1Down,";
-                batData += to_string(bat.getPosition().left)+","+ to_string(bat.getPosition().top);
+                batData += to_string(bat.getPosition().left)+","+ to_string(bat.getPosition().top)+",";
                 batData += to_string(bat.getShape().getSize().x) +","+ to_string(bat.getShape().getSize().y);
 
                 client.send( (char*)(batData.c_str()) );
@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
                 /*if(enemy_bat.getPosition().top > 0)
                     enemy_bat.moveUp();*/
                 enemyBatData += "2Up,";
-                enemyBatData += to_string(enemy_bat.getPosition().left)+","+ to_string(enemy_bat.getPosition().top);
+                enemyBatData += to_string(enemy_bat.getPosition().left)+","+ to_string(enemy_bat.getPosition().top)+",";
                 enemyBatData += to_string(enemy_bat.getShape().getSize().x) +","+ to_string(enemy_bat.getShape().getSize().y);
                 client.send( (char*)(enemyBatData.c_str()) );
 
@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
                 //if(enemy_bat.getPosition().top < windowHeight - enemy_bat.getShape().getSize().y)
                     //enemy_bat.moveDown();
                     enemyBatData += "2Down,";
-                    enemyBatData += to_string(enemy_bat.getPosition().left)+","+ to_string(enemy_bat.getPosition().top);
+                    enemyBatData += to_string(enemy_bat.getPosition().left)+","+ to_string(enemy_bat.getPosition().top)+",";
                     enemyBatData += to_string(enemy_bat.getShape().getSize().x) +","+ to_string(enemy_bat.getShape().getSize().y);
                     client.send( (char*)(enemyBatData.c_str()) );
             }
