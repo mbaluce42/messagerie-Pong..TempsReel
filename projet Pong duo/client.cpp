@@ -144,6 +144,23 @@ int main(int argc, char *argv[])
 
     bool focus;
 
+    string notData="";
+    cout<<endl<<"(CLIENT)Fenetre non active" << endl;
+    notData += "NOT,0,0,0,0";
+    status=client.send( (char*)(notData.c_str()) );
+    if (status != OK)
+    {
+        cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
+        return status;
+    }
+    else
+    {
+        cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
+    }
+
+    goto start;
+
+
     while (window.isOpen())
     {
         Event event;
@@ -262,23 +279,8 @@ int main(int argc, char *argv[])
                 window.close();
             }
         }
-        else
-        {
-            string notData="";
-            cout<<endl<<"(CLIENT)Fenetre non active" << endl;
-            notData += "NOT,0,0,0,0";
-            status=client.send( (char*)(notData.c_str()) );
-            if (status != OK)
-            {
-                cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
-                return status;
-            }
-            else
-            {
-                cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
-            }
-        }
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        start:
+        std::this_thread::sleep_for(std::chrono::seconds(4));
 
         cout <<endl << "avant receive" << endl;
 
@@ -289,7 +291,18 @@ int main(int argc, char *argv[])
         batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);*/
 
         char AllData[1024];
-        client.receive(AllData);
+        status= client.receive(AllData);
+
+        if(status != OK)
+        {
+            cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
+            return status;
+        }
+        else
+        {
+            cout<<"(CLIENT)Données FINAL(ball,bats et score) reçues du serveur"<<endl;
+            cout<<endl<< AllData << endl;
+        }
         istringstream iss(AllData);// flux iss  va permettre d'extrire les variable de la chaine de caractère
         float ballLeft, ballTop, batC1Left, batC1Top, batC2Left, batC2Top;
 
