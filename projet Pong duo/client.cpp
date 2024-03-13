@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 #include "bat.h"
 #include "ball.h"
 #include <string>
+#include <thread>
 
 using namespace std;
 using namespace sf;
@@ -121,8 +122,6 @@ int main(int argc, char *argv[])
     hud.setFillColor(sf::Color::White);
     hud.setPosition(Vector2f((windowWidth/2)-100,0));
 
-
-    // Create separator area
     RectangleShape separators[16];
     int y_sepa = 0;
     for (int i = 0; i<16;i++){
@@ -145,25 +144,6 @@ int main(int argc, char *argv[])
 
     bool focus;
 
-       /* // Clear everything from the last frame
-        window.clear(Color(0, 0, 0,255));
-
-        window.draw(bat.getShape());
-
-        window.draw(ball.getShape());
-
-        window.draw(enemy_bat.getShape());
-
-        // Draw our score
-
-        // draw separator
-        for (int i = 0; i<16;i++){
-            window.draw(separators[i]);
-        }
-        // Show everything we just drew
-        window.display();*/
-    
-
     while (window.isOpen())
     {
         Event event;
@@ -183,22 +163,6 @@ int main(int argc, char *argv[])
             string batData="";
             string enemyBatData="";
             // Send bat position to the server
-            /*else
-        {*/
-            cout <<endl << "(CLIENT)Fenetre non active" << endl;
-            batData += "NOT,0,0,0,0";
-            status=client.send( (char*)(batData.c_str()) );
-                if (status != OK)
-                {
-                    cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
-                    return status;
-                }
-                else
-                {
-                    cout<<"(CLIENT)Position du enemyBat envoyé au serveur (2Down[S])"<<endl;
-                }
-
-        //}
             if (Keyboard::isKeyPressed(Keyboard::Up))
             {
                 // Move bat up
@@ -298,6 +262,23 @@ int main(int argc, char *argv[])
                 window.close();
             }
         }
+        else
+        {
+            string notData="";
+            cout<<endl<<"(CLIENT)Fenetre non active" << endl;
+            notData += "NOT,0,0,0,0";
+            status=client.send( (char*)(notData.c_str()) );
+            if (status != OK)
+            {
+                cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
+                return status;
+            }
+            else
+            {
+                cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(5));
 
         cout <<endl << "avant receive" << endl;
 

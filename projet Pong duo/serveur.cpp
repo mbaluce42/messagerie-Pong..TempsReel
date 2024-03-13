@@ -241,9 +241,10 @@ int main(int argc, char *argv[])
                     }*/
                 }   
             }
-            else
+            if(movType=="NOT")
             {
                 cout <<endl<< "!! (SERVEUR)CLIENT 1 N'AS PAS MOVE !!" << endl;
+                cout<<endl<< "!! (SERVEUR) conservation position bat !!";
             }
         }
         else
@@ -382,10 +383,12 @@ int main(int argc, char *argv[])
                         cout << "(SERVEUR)Position bat client 1 vers client 2 envoyé avec succes" << endl;
                     }*/
                 }
+                
             }
-            else
+            if(movType=="NOT")
             {
-                cout <<endl<< "!! (SERVEUR)CLIENT 1 N'AS PAS MOVE !!" << endl;
+                cout <<endl<< "!! (SERVEUR)CLIENT 2 N'AS PAS MOVE !!" << endl;
+                cout<<endl<< "!! (SERVEUR) conservation position bat !!";
             }
         }
         else
