@@ -6,6 +6,7 @@
 #include "bat.h"
 #include "ball.h"
 #include "Status.h"
+#include <thread>
 
 using namespace std;
 
@@ -121,11 +122,13 @@ int main(int argc, char *argv[])
             float posLeft, posTop, sizeX, sizeY;
             // Récupérer la position
             iss >>movType >>posLeft >> posTop>> sizeX>>sizeY;
+            cout << "movType : " << movType << " posLeft : " << posLeft << " posTop : " << posTop << " sizeX : " << sizeX << " sizeY : " << sizeY << endl;
             if(movType=="1Up")
             {
                 batC1= Bat(posLeft, posTop);
                 if(batC1.getPosition().top > 0)
                 {
+                    cout<<endl<< "!! (SERVEUR)CLIENT 1 MOVE UP !!";
                     batC1.moveUp();
                     /*batSendData="";
                     batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top);
@@ -156,6 +159,7 @@ int main(int argc, char *argv[])
                 batC2= Bat(posLeft, posTop);
                 if(batC2.getPosition().top > 0)
                 {
+                    cout<<endl<< "!! (SERVEUR)CLIENT 2 MOVE UP !!";
                     batC2.moveUp();
                     /*batSendData="";
                     batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);
@@ -186,6 +190,7 @@ int main(int argc, char *argv[])
                 batC1= Bat(posLeft, posTop);
                 if(batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
                 {
+                    cout<<endl<< "!! (SERVEUR)CLIENT 1 MOVE DOWN !!";
                     batC1.moveDown();
                     /*batSendData="";
                     batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top);
@@ -216,6 +221,7 @@ int main(int argc, char *argv[])
                 batC2= Bat(posLeft, posTop);
                 if(batC2.getPosition().top < windowHeight - batC2.getShape().getSize().y)
                 {
+                    cout<<endl<< "!! (SERVEUR)CLIENT 2 MOVE DOWN !!";
                     batC2.moveDown();
                     /*batSendData="";
                     batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);
@@ -241,7 +247,7 @@ int main(int argc, char *argv[])
                     }*/
                 }   
             }
-            if(movType=="NOT")
+            else if(movType=="NOT")
             {
                 cout <<endl<< "!! (SERVEUR)CLIENT 1 N'AS PAS MOVE !!" << endl;
                 cout<<endl<< "!! (SERVEUR) conservation position bat !!";
@@ -266,6 +272,7 @@ int main(int argc, char *argv[])
             iss >>movType >>posLeft >> posTop>> sizeX>>sizeY;
             if(movType=="1Up")
             {
+                cout<<endl<< "!! (SERVEUR)CLIENT 2 MOVE UP !!";
                 batC2= Bat(posLeft, posTop);
                 if(batC2.getPosition().top > 0)
                 {
@@ -296,9 +303,11 @@ int main(int argc, char *argv[])
             }
             else if(movType=="2UP")
             {
+                
                 batC1= Bat(posLeft, posTop);
                 if(batC1.getPosition().top > 0)
                 {
+                    cout << "(SERVEUR)CLIENT 1 MOVE UP";
                     batC1.moveUp();
                     /*batSendData="";
                     batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top);
@@ -329,6 +338,7 @@ int main(int argc, char *argv[])
                 batC2= Bat(posLeft, posTop);
                 if(batC2.getPosition().top < windowHeight - batC2.getShape().getSize().y)
                 {
+                    cout<<endl<< "!! (SERVEUR)CLIENT 2 MOVE DOWN !!";
                     batC2.moveDown();
                     /*batSendData="";
                     batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);
@@ -359,6 +369,7 @@ int main(int argc, char *argv[])
                 batC1= Bat(posLeft, posTop);
                 if(batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
                 {
+                    cout<<endl<< "!! (SERVEUR)CLIENT 1 MOVE DOWN !!";
                     batC1.moveDown();
                     /*batSendData="";
                     batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top);
@@ -385,10 +396,10 @@ int main(int argc, char *argv[])
                 }
                 
             }
-            if(movType=="NOT")
+            else if(movType=="NOT")
             {
                 cout <<endl<< "!! (SERVEUR)CLIENT 2 N'AS PAS MOVE !!" << endl;
-                cout<<endl<< "!! (SERVEUR) conservation position bat !!";
+                cout<<endl<< "!! (SERVEUR) conservation position bat !!"<<endl;
             }
         }
         else
@@ -446,12 +457,12 @@ int main(int argc, char *argv[])
         status = client1.send((char*)(ballData + batSendData).c_str());
         if(status != OK)
         {
-            cout << "(SERVEUR)ERREUR d'envoi position ball vers client 1" << endl;
+            cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 1" << endl;
             return status;
         }
         else
         {
-            cout << "(SERVEUR)Position ball vers client 1 envoyé avec succes" << endl;
+            cout << "(SERVEUR)Position ball et bats vers client 1 envoyé avec succes" << endl;
         }
 
         batSendData="";
@@ -461,15 +472,16 @@ int main(int argc, char *argv[])
         status = client2.send((char*)(ballData + batSendData).c_str());
         if(status != OK)
         {
-            cout << "(SERVEUR)ERREUR d'envoi position ball vers client 2" << endl;
+            cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 2" << endl;
             return status;
         }
         else
         {
-            cout << "(SERVEUR)Position ball vers client 2 envoyé avec succes" << endl;
+            cout << "(SERVEUR)Position ball et bats vers client 2 envoyé avec succes" << endl;
         }
 
-        
+        std::this_thread::sleep_for(std::chrono::seconds(4));
+
     }// This is the end of the "while" loop
 
 }

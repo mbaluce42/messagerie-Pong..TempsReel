@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 
     cout << "(CLIENT)Connection au serveur REUSSI" << std::endl;
 
-    bool focus;
+    bool focus=true;
 
     string notData="";
     cout<<endl<<"(CLIENT)Fenetre non active" << endl;
@@ -158,20 +158,62 @@ int main(int argc, char *argv[])
         cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
     }
 
-    goto start;
+    //goto start;
 
 
     while (window.isOpen())
     {
         Event event;
 
+        char AllData[1024];
+        status= client.receive(AllData);
+
+        if(status != OK)
+        {
+            cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
+            return status;
+        }
+        else
+        {
+            cout<<"(CLIENT)Données FINAL(ball,bats et score) reçues du serveur"<<endl;
+            cout<<endl<< AllData << endl;
+        }
+        istringstream iss(AllData);// flux iss  va permettre d'extrire les variable de la chaine de caractère
+        float ballLeft, ballTop, batC1Left, batC1Top, batC2Left, batC2Top;
+
+        iss >>ballLeft >> ballTop >> scoreC1 >> scoreC2 >> batC1Left >> batC1Top >> batC2Left >> batC2Top;
+
+        bat = Bat(batC1Left, batC1Top);
+        enemy_bat = Bat(batC2Left, batC2Top);
+        ball = Ball(ballLeft, ballTop);
+        std::stringstream ss;
+        ss << scoreC1<< "\t" << scoreC2;
+        
+        hud.setString(ss.str());
+
+        // Clear everything from the last frame
+        window.clear(Color(0, 0, 0,255));
+        window.draw(bat.getShape());
+        window.draw(ball.getShape());
+        window.draw(enemy_bat.getShape());
+
+        // Draw our score
+        window.draw(hud);
+
+        // draw separator
+        for (int i = 0; i<16;i++){
+            window.draw(separators[i]);
+        }
+        // Show everything we just drew
+        window.display();
+
         while (window.pollEvent(event))
         {
             if (event.type == Event::Closed){
                 // Someone closed the window- bye
                 window.close(); cout<<endl<<"(CLIENT)Fenetre fermée" << endl;}
-        else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active 1" << endl;}
-        else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
+        //else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active 1" << endl;}
+        //else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
         }
 
         if(focus)
@@ -279,8 +321,8 @@ int main(int argc, char *argv[])
                 window.close();
             }
         }
-        start:
-        std::this_thread::sleep_for(std::chrono::seconds(4));
+        //start:
+        
 
         cout <<endl << "avant receive" << endl;
 
@@ -290,47 +332,9 @@ int main(int argc, char *argv[])
         batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top)+",";
         batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);*/
 
-        char AllData[1024];
-        status= client.receive(AllData);
-
-        if(status != OK)
-        {
-            cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
-            return status;
-        }
-        else
-        {
-            cout<<"(CLIENT)Données FINAL(ball,bats et score) reçues du serveur"<<endl;
-            cout<<endl<< AllData << endl;
-        }
-        istringstream iss(AllData);// flux iss  va permettre d'extrire les variable de la chaine de caractère
-        float ballLeft, ballTop, batC1Left, batC1Top, batC2Left, batC2Top;
-
-        iss >>ballLeft >> ballTop >> scoreC1 >> scoreC2 >> batC1Left >> batC1Top >> batC2Left >> batC2Top;
-
-        bat = Bat(batC1Left, batC1Top);
-        enemy_bat = Bat(batC2Left, batC2Top);
-        ball = Ball(ballLeft, ballTop);
-        std::stringstream ss;
-        ss << scoreC1<< "\t" << scoreC2;
         
-        hud.setString(ss.str());
 
-        // Clear everything from the last frame
-        window.clear(Color(0, 0, 0,255));
-        window.draw(bat.getShape());
-        window.draw(ball.getShape());
-        window.draw(enemy_bat.getShape());
-
-        // Draw our score
-        window.draw(hud);
-
-        // draw separator
-        for (int i = 0; i<16;i++){
-            window.draw(separators[i]);
-        }
-        // Show everything we just drew
-        window.display();
+        //std::this_thread::sleep_for(std::chrono::seconds(4));
     }
 
     return 0;
