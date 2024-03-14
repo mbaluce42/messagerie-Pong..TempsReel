@@ -1,82 +1,3 @@
-/*#include "GameClient.h"
-#include <iostream>
-#include <SFML/Graphics.hpp>
-#include "bat.h"
-
-using namespace std;
-using namespace sf;
-
-int main(int argc, char *argv[])
-{
-    if(argc < 3)
-    {
-        cout << "Usage: " << argv[0] << " <server_ip> <server_port>" << endl;
-        return -1;
-    }
-
-    string server_ip = argv[1];
-    int server_port = atoi(argv[2]);
-
-    GameClient client;
-    if(client.connectToServer(server_ip, server_port) != OK)
-    {
-        cout << "Error connecting to server" << endl;
-        return -1;
-    }
-
-    // Création de la fenêtre SFML
-    RenderWindow window(VideoMode(800, 600), "Pong Client");
-
-    // Création d'un bat pour le client
-    Bat bat(0, 0); // Initialiser la position du bat
-
-    while (window.isOpen())
-    {
-        // Gérer les événements
-        Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == Event::Closed)
-                window.close();
-        }
-
-        // Envoyer la position du bat au serveur
-        Vector2f batPosition = bat.getPosition();
-        if(client.send((char*)&batPosition) != OK)
-        {
-            cout << "Error sending bat position to server" << endl;
-            return -1;
-        }
-
-        // Recevoir la position du bat de l'adversaire
-        Vector2f opponentBatPosition;
-        if(client.receive((char*)&opponentBatPosition) != OK)
-        {
-            cout << "Error receiving opponent bat position from server" << endl;
-            return -1;
-        }
-
-        // Mettre à jour la position du bat de l'adversaire
-        bat.setYPosition(opponentBatPosition.y);
-
-        // Effacer l'écran
-        window.clear();
-
-        // Dessiner le bat du client
-        window.draw(bat.getShape());
-
-        // Afficher le contenu de la fenêtre
-        window.display();
-    }
-
-    // Fermer la connexion avec le serveur
-    client.disconnect();
-
-    return 0;
-}*/
-
-
-
 #include "GameClient.h"
 #include <iostream>
 #include <SFML/Graphics.hpp>
@@ -109,11 +30,6 @@ int main(int argc, char *argv[])
     // Initialize SFML window
     RenderWindow window(VideoMode(windowWidth, windowHeight), "Pong Client");
 
-    // Create bats and ball
-    Bat bat (0, windowHeight/2);
-    Bat enemy_bat(windowWidth-bat.getShape().getSize().x, windowHeight/2);
-    Ball ball(windowWidth / 2, windowHeight/2);
-
     Text hud;
     Font font;
     font.loadFromFile("OpenSans-Bold.ttf");
@@ -142,28 +58,121 @@ int main(int argc, char *argv[])
 
     cout << "(CLIENT)Connection au serveur REUSSI" << std::endl;
 
-    bool focus=true;
-
-    string notData="";
-    cout<<endl<<"(CLIENT)Fenetre non active" << endl;
-    notData += "NOT 0 0 0 0";
-    status=client.send( (char*)(notData.c_str()) );
-    if (status != OK)
-    {
-        cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
-        return status;
-    }
-    else
-    {
-        cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
-    }
-
-    //goto start;
-
+    bool focus;
 
     while (window.isOpen())
     {
         Event event;
+
+        while (window.pollEvent(event))
+        {
+            if (event.type == Event::Closed){
+                // Someone closed the window- bye
+                string bye;
+
+                status= client.send( (char*)(bye.c_str()) );
+                if (status != OK)
+                {
+                    cout<<"(CLIENT)ERREUR envoi AU REVOIR au serveur (CLOSED)"<<endl;
+                    return status;
+                }
+                else
+                {
+                    cout<<"(CLIENT) AU REVOIR envoyé au serveur (CLOSED)"<<endl;
+                }
+
+                window.close(); cout<<endl<<"(CLIENT)Fenetre fermée" << endl;}
+        else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active 1" << endl;}
+        else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
+        }
+
+        if(focus)
+        {
+            if (Keyboard::isKeyPressed(sf::Keyboard::Escape))
+            {
+                // quit...
+                // Someone closed the window- bye
+                window.close();
+            }
+
+
+            cout<<endl<<"(CLIENT)Fenetre active 2" << endl;
+            string batData="";
+            string enemyBatData="";
+            // Send bat position to the server
+            if (Keyboard::isKeyPressed(Keyboard::Up))
+            {
+                batData += "Up ";
+
+                status= client.send( (char*)(batData.c_str()) );
+                if (status != OK)
+                {
+                    cout<<"(CLIENT)ERREUR envoi de la position du bat au serveur (1Up)"<<endl;
+                    return status;
+                }
+                else
+                {
+                    cout<<"(CLIENT)Position du bat envoyé au serveur (1UP)"<<endl;
+                }
+            
+            }
+            else if (Keyboard::isKeyPressed(Keyboard::Down))
+            {
+                batData += "Down ";
+
+                status=client.send( (char*)(batData.c_str()) );
+                if (status != OK)
+                {
+                    cout<<"(CLIENT)ERREUR envoi de la position du bat au serveur (1Down)"<<endl;
+                    return status;
+                }
+                else
+                {
+                    cout<<"(CLIENT)Position du bat envoyé au serveur (1Down)"<<endl;
+                }
+            }
+            else
+            {
+                cout<<endl<<"(CLIENT)Fenetre non active" << endl;
+                string notData="";
+                notData += "NOT ";
+                status=client.send( (char*)(notData.c_str()) );
+                if (status != OK)
+                {
+                    cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (NOT move)"<<endl;
+                    return status;
+                }
+                else
+                {
+                    cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
+                }
+            }
+        }
+        else
+        {
+            cout<<endl<<"(CLIENT)Fenetre non active" << endl;
+            string notData="";
+            notData += "NOT ";
+            status=client.send( (char*)(notData.c_str()) );
+            if (status != OK)
+            {
+                cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (NOT move)"<<endl;
+                return status;
+            }
+            else
+            {
+                cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
+            }
+        }
+
+
+        cout<<"En cours de construction du terrain"<<endl;
+
+        /*string ballData =""+ to_string(ball.getPosition().left)+" "+ to_string(ball.getPosition().top) +" "+to_string(ball.getShape().getSize().x) +" "+ to_string(ball.getShape().getSize().y)+ " ";
+        string score="" + to_string(scoreC1)+" "+ to_string(scoreC2)+" ";
+        batSendData += to_string(batC1.getPosition().left)+" "+ to_string(batC1.getPosition().top) +" "+to_string(batC1.getShape().getSize().x) +" "+ to_string(batC1.getShape().getSize().y)+ " ";
+        batSendData += to_string(batC2.getPosition().left)+" "+ to_string(batC2.getPosition().top) +" "+to_string(batC2.getShape().getSize().x) +" "+ to_string(batC2.getShape().getSize().y)+ " ";
+*/
 
         char AllData[1024]="";
         status= client.receive(AllData);
@@ -178,15 +187,28 @@ int main(int argc, char *argv[])
             cout<<"(CLIENT)Données FINAL(ball,bats et score) reçues du serveur"<<endl;
             cout<<endl<< AllData << endl;
         }
+        RectangleShape ballShape, batC1Shape, batC2Shape;
+
         istringstream iss(AllData);// flux iss  va permettre d'extrire les variable de la chaine de caractère
-        float ballLeft, ballTop, batC1Left, batC1Top, batC2Left, batC2Top;
+        float ballLeft, ballTop, ballSizeX, ballSizeY ,
+              batC1Left, batC1Top, batC1SizeX, batC1SizeY,
+              batC2Left, batC2Top, batC2SizeX, batC2SizeY;
 
-        iss >>ballLeft >> ballTop >> scoreC1 >> scoreC2 >> batC1Left >> batC1Top >> batC2Left >> batC2Top;
+        iss >> ballLeft >> ballTop >> ballSizeX >> ballSizeY
+            >> scoreC1 >> scoreC2
+            >> batC1Left >> batC1Top >> batC1SizeX >> batC1SizeY
+            >> batC2Left >> batC2Top >> batC2SizeX >> batC2SizeY;
 
-        bat = Bat(batC1Left, batC1Top);
-        enemy_bat = Bat(batC2Left, batC2Top);
-        std::cout<<"enemy;"<<batC2Left<<";"<<batC2Top<<std::endl;
-        ball = Ball(ballLeft, ballTop);
+
+        ballShape.setSize(Vector2f(ballSizeX, ballSizeY));
+        ballShape.setPosition(Vector2f(ballLeft, ballTop));
+        
+        batC1Shape.setSize(Vector2f(batC1SizeX, batC1SizeY));
+        batC1Shape.setPosition(Vector2f(batC1Left, batC1Top));
+
+        batC2Shape.setSize(Vector2f(batC2SizeX, batC2SizeY));
+        batC2Shape.setPosition(Vector2f(batC2Left, batC2Top));
+
         std::stringstream ss;
         ss << scoreC1<< "\t" << scoreC2;
         
@@ -194,9 +216,9 @@ int main(int argc, char *argv[])
 
         // Clear everything from the last frame
         window.clear(Color(0, 0, 0,255));
-        window.draw(bat.getShape());
-        window.draw(ball.getShape());
-        window.draw(enemy_bat.getShape());
+        window.draw(batC1Shape);
+        window.draw(ballShape);
+        window.draw(batC2Shape);
 
         // Draw our score
         window.draw(hud);
@@ -207,152 +229,7 @@ int main(int argc, char *argv[])
         }
         // Show everything we just drew
         window.display();
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-
-        while (window.pollEvent(event))
-        {
-            if (event.type == Event::Closed){
-                // Someone closed the window- bye
-                window.close(); cout<<endl<<"(CLIENT)Fenetre fermée" << endl;}
-        else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active 1" << endl;}
-        else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
-        }
-
-        if(focus)
-        {
-            cout<<endl<<"(CLIENT)Fenetre active 2" << endl;
-            string batData="";
-            string enemyBatData="";
-            // Send bat position to the server
-            if (Keyboard::isKeyPressed(Keyboard::Up))
-            {
-                // Move bat up
-                /*if(bat.getPosition().top > 0)
-                {*/
-                    //bat.moveUp();
-                    batData += "1Up ";
-                    batData += to_string(bat.getPosition().left)+" "+ to_string(bat.getPosition().top) +" ";
-                    batData += to_string(bat.getShape().getSize().x) +" "+ to_string(bat.getShape().getSize().y);
-                    status= client.send( (char*)(batData.c_str()) );
-                    if (status != OK)
-                    {
-                        cout<<"(CLIENT)ERREUR envoi de la position du bat au serveur (1Up)"<<endl;
-                        return status;
-                    }
-                    else
-                    {
-                        cout<<"(CLIENT)Position du bat envoyé au serveur (1UP)"<<endl;
-                    }
-
-                    /*char batData[1024]; char enemyBatData[1024];
-
-                    client.receive(batData);
-                    istringstream iss(batData);// flux iss  va permettre d'extrire les variable de la chaine de caractère
-                    float posLeft, posTop;
-                    // Récupérer la position
-                    iss >>posLeft >> posTop;
-                    bat = Bat(posLeft, posTop);*/
-
-                //}
-                
-            }
-            else if (Keyboard::isKeyPressed(Keyboard::Down))
-            {
-                // Move bat down
-                //if(bat.getPosition().top < windowHeight - bat.getShape().getSize().y)
-                //bat.moveDown();
-                batData += "1Down ";
-                batData += to_string(bat.getPosition().left)+" "+ to_string(bat.getPosition().top)+" ";
-                batData += to_string(bat.getShape().getSize().x) +" "+ to_string(bat.getShape().getSize().y);
-
-                status=client.send( (char*)(batData.c_str()) );
-                if (status != OK)
-                {
-                    cout<<"(CLIENT)ERREUR envoi de la position du bat au serveur (1Down)"<<endl;
-                    return status;
-                }
-                else
-                {
-                    cout<<"(CLIENT)Position du bat envoyé au serveur (1Down)"<<endl;
-                }
-                //client.receive((char*)&enemy_bat.getPosition());
-            }
-
-            if (Keyboard::isKeyPressed(Keyboard::Z)){
-                /*if(enemy_bat.getPosition().top > 0)
-                    enemy_bat.moveUp();*/
-                enemyBatData += "2Up ";
-                enemyBatData += to_string(enemy_bat.getPosition().left)+" "+ to_string(enemy_bat.getPosition().top)+" ";
-                enemyBatData += to_string(enemy_bat.getShape().getSize().x) +" "+ to_string(enemy_bat.getShape().getSize().y);
-                status=client.send( (char*)(enemyBatData.c_str()) );
-                if (status != OK)
-                {
-                    cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Up[Z])"<<endl;
-                    return status;
-                }
-                else
-                {
-                    cout<<"(CLIENT)Position du enemyBat envoyé au serveur (2Up[Z])"<<endl;
-                }
-
-            }
-            else if (Keyboard::isKeyPressed(Keyboard::S))
-            {
-                //if(enemy_bat.getPosition().top < windowHeight - enemy_bat.getShape().getSize().y)
-                    //enemy_bat.moveDown();
-                enemyBatData += "2Down ";
-                enemyBatData += to_string(enemy_bat.getPosition().left)+" "+ to_string(enemy_bat.getPosition().top)+" ";
-                enemyBatData += to_string(enemy_bat.getShape().getSize().x) +" "+ to_string(enemy_bat.getShape().getSize().y);
-                status=client.send( (char*)(enemyBatData.c_str()) );
-                if (status != OK)
-                {
-                    cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
-                    return status;
-                }
-                else
-                {
-                    cout<<"(CLIENT)Position du enemyBat envoyé au serveur (2Down[S])"<<endl;
-                }
-
-            }
-
-            if (Keyboard::isKeyPressed(sf::Keyboard::Escape))
-            {
-                // quit...
-                // Someone closed the window- bye
-                window.close();
-            }
-        }
-        else
-        {
-            cout<<endl<<"(CLIENT)Fenetre non active" << endl;
-            notData="";
-            notData += "NOT 0 0 0 0";
-            status=client.send( (char*)(notData.c_str()) );
-            if (status != OK)
-            {
-                cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
-                return status;
-            }
-            else
-            {
-                cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
-            }
-        }
-        //start:
-        
-
-        cout <<endl << "avant receive" << endl;
-
-        // Receive updated position of the ball, bats and score from the server
-
-        /*ballData += to_string(ball.getPosition().left)+","+ to_string(ball.getPosition().top)+","+ to_string(scoreC1)+","+ to_string(scoreC2)+",";
-        batSendData += to_string(batC1.getPosition().left)+","+ to_string(batC1.getPosition().top)+",";
-        batSendData += to_string(batC2.getPosition().left)+","+ to_string(batC2.getPosition().top);*/
-
-        
-
-        //std::this_thread::sleep_for(std::chrono::seconds(4));
+        cout<<endl<<"!!! (CLIENT) terrain construit avec succes !!!"<<endl;
     }
 
     return 0;

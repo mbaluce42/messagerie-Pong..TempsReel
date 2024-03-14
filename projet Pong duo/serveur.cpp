@@ -10,8 +10,6 @@
 
 using namespace std;
 
-
-
 int main(int argc, char *argv[])
 {
     int status;
@@ -26,12 +24,6 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    /*if(strlen(argv[1]) > 5)
-    {
-        cout<<endl <<"!!! Le numero de port doit avoir min et max 5 chiffres  !!!"<< endl;
-        cout << "!!! Exemple : ./serveur 8080 !!!" << endl;
-        return -1;
-    }*/
     // Conv l'argument du port en entier
     int port = atoi(argv[1]);
 
@@ -113,45 +105,24 @@ int main(int argc, char *argv[])
             // Analyser les données
             istringstream iss(batData);// flux iss  va permettre d'extrire les variable 
             string movType;
-            float posLeft, posTop, sizeX, sizeY;
             // Récupérer la position
-            iss >>movType >>posLeft >> posTop>> sizeX>>sizeY;
-            cout << "movType : " << movType << " posLeft : " << posLeft << " posTop : " << posTop << " sizeX : " << sizeX << " sizeY : " << sizeY << endl;
-            if(movType=="1Up")
+            iss >>movType;
+            cout << "movType : " << movType << endl;
+            if(movType=="Up")
             {
-                batC1= Bat(posLeft, posTop);
                 if(batC1.getPosition().top > 0)
                 {
                     cout<<endl<< "!! (SERVEUR)CLIENT 1 MOVE UP !!";
                     batC1.moveUp();
                 }
             }
-            else if(movType=="2UP")
+            else if (movType=="Down")
             {
-                batC2= Bat(posLeft, posTop);
-                if(batC2.getPosition().top > 0)
-                {
-                    cout<<endl<< "!! (SERVEUR)CLIENT 2 MOVE UP !!";
-                    batC2.moveUp();
-                }
-            }
-            else if (movType=="1Down")
-            {
-                batC1= Bat(posLeft, posTop);
                 if(batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
                 {
                     cout<<endl<< "!! (SERVEUR)CLIENT 1 MOVE DOWN !!";
                     batC1.moveDown();
                 }
-            }
-            else if (movType=="2Down")
-            {
-                batC2= Bat(posLeft, posTop);
-                if(batC2.getPosition().top < windowHeight - batC2.getShape().getSize().y)
-                {
-                    cout<<endl<< "!! (SERVEUR)CLIENT 2 MOVE DOWN !!";
-                    batC2.moveDown();
-                }   
             }
             else if(movType=="NOT")
             {
@@ -173,49 +144,23 @@ int main(int argc, char *argv[])
             // Analyser les données
             istringstream iss(enemyBatData);// flux iss  va permettre d'extrire les variable 
             string movType;
-            float posLeft, posTop, sizeX, sizeY;
             // Récupérer la position
-            iss >>movType >>posLeft >> posTop>> sizeX>>sizeY;
-            if(movType=="1Up")
+            iss >>movType ;
+            if(movType=="Up")
             {
-                cout<<endl<< "!! (SERVEUR)CLIENT 2 MOVE UP !!";
-                batC2= Bat(posLeft, posTop);
                 if(batC2.getPosition().top > 0)
                 {
+                    cout<< "!! (SERVEUR)CLIENT 2 MOVE UP !!"<<endl;
                     batC2.moveUp();
                 }
             }
-            else if(movType=="2UP")
+            else if (movType=="Down")
             {
-                
-                batC1= Bat(posLeft, posTop);
-                if(batC1.getPosition().top > 0)
-                {
-                    cout << "(SERVEUR)CLIENT 1 MOVE UP";
-                    batC1.moveUp();
-       
-                }
-            }
-            else if (movType=="1Down")
-            {
-                batC2= Bat(posLeft, posTop);
                 if(batC2.getPosition().top < windowHeight - batC2.getShape().getSize().y)
                 {
-                    cout<<endl<< "!! (SERVEUR)CLIENT 2 MOVE DOWN !!";
+                    cout<<"!! (SERVEUR)CLIENT 2 MOVE DOWN !!"<<endl;
                     batC2.moveDown();
-
                 }
-            }
-            else if (movType=="2Down")
-            {
-                batC1= Bat(posLeft, posTop);
-                if(batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
-                {
-                    cout<<endl<< "!! (SERVEUR)CLIENT 1 MOVE DOWN !!";
-                    batC1.moveDown();
-
-                }
-                
             }
             else if(movType=="NOT")
             {
@@ -234,7 +179,6 @@ int main(int argc, char *argv[])
         {
             // reverse the ball direction
             ball.reboundTopOrBot();
-
         }
 
         // Handle ball hitting side
@@ -255,55 +199,52 @@ int main(int argc, char *argv[])
         {
             ball.reboundBat();
         }
-
-
         //send all info to clients
 
         float oldPosX = ball.getPosition().left;
-        batC1.update();//bat.update();
-        batC2.update();//enemy_bat.update();
+        batC1.update();
+        batC2.update();
         ball.update();
-        /*std::stringstream ss;
-        ss << scoreC1<< "\t" << scoreC2;*/
-        
 
-
-
-        string ballData="";
         batSendData="";       
-        ballData += to_string(ball.getPosition().left)+" "+ to_string(ball.getPosition().top)+" "+ to_string(scoreC1)+" "+ to_string(scoreC2)+" ";
-        batSendData += to_string(batC1.getPosition().left)+" "+ to_string(batC1.getPosition().top)+" ";
-        batSendData += to_string(batC2.getPosition().left)+" "+ to_string(batC2.getPosition().top);
+        string ballData =""+ to_string(ball.getPosition().left)+" "+ to_string(ball.getPosition().top) +" "+to_string(ball.getShape().getSize().x) +" "+ to_string(ball.getShape().getSize().y)+ " ";
+        string score="" + to_string(scoreC1)+" "+ to_string(scoreC2)+" ";
+        batSendData += to_string(batC1.getPosition().left)+" "+ to_string(batC1.getPosition().top) +" "+to_string(batC1.getShape().getSize().x) +" "+ to_string(batC1.getShape().getSize().y)+ " ";
+        batSendData += to_string(batC2.getPosition().left)+" "+ to_string(batC2.getPosition().top) +" "+to_string(batC2.getShape().getSize().x) +" "+ to_string(batC2.getShape().getSize().y)+ " ";
+
         
-        status = client1.send((char*)(ballData + batSendData).c_str());
+        status = client1.send((char*)(ballData + score +batSendData).c_str());
         if(status != OK)
         {
-            cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 1" << endl;
+            cout <<endl<< "(SERVEUR)ERREUR d'envoi position ball et bats vers client 1" << endl;
             return status;
         }
         else
         {
-            cout << "(SERVEUR)Position ball et bats vers client 1 envoyé avec succes" << endl;
-            cout<<ballData + batSendData<<endl;
+            cout << endl<<"(SERVEUR)Position ball[4] score[2] bats[8] vers client 1 envoyé avec succes:" << endl;
+            cout<<endl<<ballData + batSendData<<endl;
         }
+
+       /* Bat bat (0, windowHeight/2);
+    Bat enemy_bat(windowWidth-bat.getShape().getSize().x, windowHeight/2);*/
+
 
         batSendData="";
-        batSendData += to_string(batC2.getPosition().left)+" "+ to_string(batC2.getPosition().top)+" ";
-        batSendData += to_string(batC1.getPosition().left)+" "+ to_string(batC1.getPosition().top);
-        
-        status = client2.send((char*)(ballData + batSendData).c_str());
+        score="" + to_string(scoreC2)+" "+ to_string(scoreC1)+" ";
+        batSendData += to_string(windowWidth - batC2.getPosition().left - batC2.getShape().getSize().x)+" "+ to_string(batC2.getPosition().top) +" "+to_string(batC2.getShape().getSize().x) +" "+ to_string(batC2.getShape().getSize().y)+ " ";
+        batSendData += to_string(windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x)+" "+ to_string(batC1.getPosition().top) +" "+to_string(batC1.getShape().getSize().x) +" "+ to_string(batC1.getShape().getSize().y)+ " ";
+
+        status = client2.send((char*)(ballData + score +batSendData).c_str());
         if(status != OK)
         {
-            cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 2" << endl;
+            cout << endl<<"(SERVEUR)ERREUR d'envoi position ball et bats vers client 2" << endl;
             return status;
         }
         else
         {
-            cout << "(SERVEUR)Position ball et bats vers client 2 envoyé avec succes" << endl;
-            cout<<ballData + batSendData<<endl;
+            cout << endl<<"(SERVEUR)Position ball[4] score[2] bats[8] vers client 2 envoyé avec succes:" << endl;
+            cout<<ballData + score+ batSendData<<endl;
         }
-
-        std::this_thread::sleep_for(std::chrono::seconds(2));
 
     }// This is the end of the "while" loop
 
