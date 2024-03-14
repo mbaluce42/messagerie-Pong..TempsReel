@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
     string notData="";
     cout<<endl<<"(CLIENT)Fenetre non active" << endl;
-    notData += "NOT,0,0,0,0";
+    notData += "NOT 0 0 0 0";
     status=client.send( (char*)(notData.c_str()) );
     if (status != OK)
     {
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
     {
         Event event;
 
-        char AllData[1024];
+        char AllData[1024]="";
         status= client.receive(AllData);
 
         if(status != OK)
@@ -185,6 +185,7 @@ int main(int argc, char *argv[])
 
         bat = Bat(batC1Left, batC1Top);
         enemy_bat = Bat(batC2Left, batC2Top);
+        std::cout<<"enemy;"<<batC2Left<<";"<<batC2Top<<std::endl;
         ball = Ball(ballLeft, ballTop);
         std::stringstream ss;
         ss << scoreC1<< "\t" << scoreC2;
@@ -206,14 +207,15 @@ int main(int argc, char *argv[])
         }
         // Show everything we just drew
         window.display();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
 
         while (window.pollEvent(event))
         {
             if (event.type == Event::Closed){
                 // Someone closed the window- bye
                 window.close(); cout<<endl<<"(CLIENT)Fenetre fermée" << endl;}
-        //else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active 1" << endl;}
-        //else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
+        else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active 1" << endl;}
+        else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
         }
 
         if(focus)
@@ -228,9 +230,9 @@ int main(int argc, char *argv[])
                 /*if(bat.getPosition().top > 0)
                 {*/
                     //bat.moveUp();
-                    batData += "1Up,";
-                    batData += to_string(bat.getPosition().left)+","+ to_string(bat.getPosition().top) +",";
-                    batData += to_string(bat.getShape().getSize().x) +","+ to_string(bat.getShape().getSize().y);
+                    batData += "1Up ";
+                    batData += to_string(bat.getPosition().left)+" "+ to_string(bat.getPosition().top) +" ";
+                    batData += to_string(bat.getShape().getSize().x) +" "+ to_string(bat.getShape().getSize().y);
                     status= client.send( (char*)(batData.c_str()) );
                     if (status != OK)
                     {
@@ -259,9 +261,9 @@ int main(int argc, char *argv[])
                 // Move bat down
                 //if(bat.getPosition().top < windowHeight - bat.getShape().getSize().y)
                 //bat.moveDown();
-                batData += "1Down,";
-                batData += to_string(bat.getPosition().left)+","+ to_string(bat.getPosition().top)+",";
-                batData += to_string(bat.getShape().getSize().x) +","+ to_string(bat.getShape().getSize().y);
+                batData += "1Down ";
+                batData += to_string(bat.getPosition().left)+" "+ to_string(bat.getPosition().top)+" ";
+                batData += to_string(bat.getShape().getSize().x) +" "+ to_string(bat.getShape().getSize().y);
 
                 status=client.send( (char*)(batData.c_str()) );
                 if (status != OK)
@@ -279,9 +281,9 @@ int main(int argc, char *argv[])
             if (Keyboard::isKeyPressed(Keyboard::Z)){
                 /*if(enemy_bat.getPosition().top > 0)
                     enemy_bat.moveUp();*/
-                enemyBatData += "2Up,";
-                enemyBatData += to_string(enemy_bat.getPosition().left)+","+ to_string(enemy_bat.getPosition().top)+",";
-                enemyBatData += to_string(enemy_bat.getShape().getSize().x) +","+ to_string(enemy_bat.getShape().getSize().y);
+                enemyBatData += "2Up ";
+                enemyBatData += to_string(enemy_bat.getPosition().left)+" "+ to_string(enemy_bat.getPosition().top)+" ";
+                enemyBatData += to_string(enemy_bat.getShape().getSize().x) +" "+ to_string(enemy_bat.getShape().getSize().y);
                 status=client.send( (char*)(enemyBatData.c_str()) );
                 if (status != OK)
                 {
@@ -298,9 +300,9 @@ int main(int argc, char *argv[])
             {
                 //if(enemy_bat.getPosition().top < windowHeight - enemy_bat.getShape().getSize().y)
                     //enemy_bat.moveDown();
-                enemyBatData += "2Down,";
-                enemyBatData += to_string(enemy_bat.getPosition().left)+","+ to_string(enemy_bat.getPosition().top)+",";
-                enemyBatData += to_string(enemy_bat.getShape().getSize().x) +","+ to_string(enemy_bat.getShape().getSize().y);
+                enemyBatData += "2Down ";
+                enemyBatData += to_string(enemy_bat.getPosition().left)+" "+ to_string(enemy_bat.getPosition().top)+" ";
+                enemyBatData += to_string(enemy_bat.getShape().getSize().x) +" "+ to_string(enemy_bat.getShape().getSize().y);
                 status=client.send( (char*)(enemyBatData.c_str()) );
                 if (status != OK)
                 {
@@ -319,6 +321,22 @@ int main(int argc, char *argv[])
                 // quit...
                 // Someone closed the window- bye
                 window.close();
+            }
+        }
+        else
+        {
+            cout<<endl<<"(CLIENT)Fenetre non active" << endl;
+            notData="";
+            notData += "NOT 0 0 0 0";
+            status=client.send( (char*)(notData.c_str()) );
+            if (status != OK)
+            {
+                cout<<"(CLIENT)ERREUR envoi de la position du enemyBat au serveur (2Down[S])"<<endl;
+                return status;
+            }
+            else
+            {
+                cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
             }
         }
         //start:
