@@ -32,20 +32,12 @@ int main(int argc, char *argv[])
 
     Text hud;
     Font font;
-    font.loadFromFile("OpenSans-Bold.ttf");
+    /*font.loadFromFile("OpenSans-Bold.ttf");
     hud.setFont(font);
     hud.setCharacterSize(75);
     hud.setFillColor(sf::Color::White);
-    hud.setPosition(Vector2f((windowWidth/2)-100,0));
-
+    hud.setPosition(Vector2f((windowWidth/2)-100,0));*/
     RectangleShape separators[16];
-    int y_sepa = 0;
-    for (int i = 0; i<16;i++){
-        separators[i].setSize(Vector2f(20,32));
-        separators[i].setPosition(Vector2f(windowWidth/2-10,y_sepa));
-
-        y_sepa+=64;
-    }
 
     GameClient client;
 
@@ -168,12 +160,6 @@ int main(int argc, char *argv[])
 
         cout<<"En cours de construction du terrain"<<endl;
 
-        /*string ballData =""+ to_string(ball.getPosition().left)+" "+ to_string(ball.getPosition().top) +" "+to_string(ball.getShape().getSize().x) +" "+ to_string(ball.getShape().getSize().y)+ " ";
-        string score="" + to_string(scoreC1)+" "+ to_string(scoreC2)+" ";
-        batSendData += to_string(batC1.getPosition().left)+" "+ to_string(batC1.getPosition().top) +" "+to_string(batC1.getShape().getSize().x) +" "+ to_string(batC1.getShape().getSize().y)+ " ";
-        batSendData += to_string(batC2.getPosition().left)+" "+ to_string(batC2.getPosition().top) +" "+to_string(batC2.getShape().getSize().x) +" "+ to_string(batC2.getShape().getSize().y)+ " ";
-*/
-
         char AllData[1024]="";
         status= client.receive(AllData);
 
@@ -212,10 +198,74 @@ int main(int argc, char *argv[])
         std::stringstream ss;
         ss << scoreC1<< "\t" << scoreC2;
         
+        //hud.setString(ss.str());
+
+        char graphData[1024]="";
+        status= client.receive(graphData);
+        if(status != OK)
+        {
+            cout<<"(CLIENT)ERREUR reception des données graphiques du serveur"<<endl;
+            return status;
+        }
+        else
+        {
+            cout<<"(CLIENT)Données graphiques reçues du serveur"<<endl;
+            cout<<endl<< graphData << endl;
+        }
+
+        iss.str(""); // Clear the buffer
+        iss.clear(); // Reset the buffer
+
+        
+        iss = istringstream(graphData);
+        // Deserialize HUD data
+        string fontFilename;
+        int characterSize, fillColor;
+        float positionX, positionY;
+
+        iss >> fontFilename >> characterSize >> fillColor >> positionX >> positionY;
+        font.loadFromFile(fontFilename);
+        hud.setFont(font);
+        hud.setCharacterSize(characterSize);
+        hud.setFillColor(sf::Color(fillColor));
+        hud.setPosition(Vector2f(positionX, positionY));
+
         hud.setString(ss.str());
+
+        memcpy(graphData, "", 1024);
+        status= client.receive(graphData);
+        if(status != OK)
+        {
+            cout<<"(CLIENT)ERREUR reception des données graphiques du serveur"<<endl;
+            return status;
+        }
+        else
+        {
+            cout<<"(CLIENT)Données graphiques reçues du serveur"<<endl;
+            cout<<endl<< graphData << endl;
+        }
+        iss.str(""); // Clear the buffer
+        iss.clear(); // Reset the buffer
+        iss = istringstream(graphData);
+
+
+
+        // Deserialize separators data
+        for (int i = 0; i<16;i++)
+        {
+            float sizeX, sizeY, positionX, positionY;
+            cout <<endl<<"(CLIENT): "<<endl<<iss.str()<<endl;
+            iss >> sizeX >> sizeY >> positionX >> positionY;
+            cout<<endl<<sizeX<<endl<<sizeY<<endl<<positionX<<endl<<positionY<<endl;
+            separators[i].setSize(Vector2f(sizeX, sizeY));
+            separators[i].setPosition(Vector2f(positionX, positionY));
+            
+        }
+
 
         // Clear everything from the last frame
         window.clear(Color(0, 0, 0,255));
+        //draw everything
         window.draw(batC1Shape);
         window.draw(ballShape);
         window.draw(batC2Shape);
@@ -229,8 +279,12 @@ int main(int argc, char *argv[])
         }
         // Show everything we just drew
         window.display();
+
+
         cout<<endl<<"!!! (CLIENT) terrain construit avec succes !!!"<<endl;
+        //sleep(0.1);
     }
+
 
     return 0;
 }

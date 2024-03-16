@@ -7,8 +7,10 @@
 #include "ball.h"
 #include "Status.h"
 #include <thread>
+#include <SFML/Graphics.hpp>
 
 using namespace std;
+
 
 int main(int argc, char *argv[])
 {
@@ -17,6 +19,24 @@ int main(int argc, char *argv[])
     int windowHeight = 768;
 
     char buffer[1024];
+
+    Text hud;
+    Font font;
+    font.loadFromFile("OpenSans-Bold.ttf");
+    hud.setFont(font);
+    hud.setCharacterSize(75);
+    hud.setFillColor(sf::Color::White);
+    hud.setPosition(Vector2f((windowWidth/2)-100,0));
+
+    RectangleShape separators[16];
+    int y_sepa = 0;
+    for (int i = 0; i<16;i++){
+        separators[i].setSize(Vector2f(20,32));
+        separators[i].setPosition(Vector2f(windowWidth/2-10,y_sepa));
+
+        y_sepa+=64;
+    }
+
 
     if(argc < 2)
     {
@@ -52,7 +72,7 @@ int main(int argc, char *argv[])
         break;
 
     case OK:
-        cout << "(SERVEUR) ERREUR,Serveur initialisé avec succes" << endl;
+        cout << "(SERVEUR)Serveur initialisé avec succes" << endl;
         break;
     
     default:
@@ -211,7 +231,6 @@ int main(int argc, char *argv[])
         string score="" + to_string(scoreC1)+" "+ to_string(scoreC2)+" ";
         batSendData += to_string(batC1.getPosition().left)+" "+ to_string(batC1.getPosition().top) +" "+to_string(batC1.getShape().getSize().x) +" "+ to_string(batC1.getShape().getSize().y)+ " ";
         batSendData += to_string(batC2.getPosition().left)+" "+ to_string(batC2.getPosition().top) +" "+to_string(batC2.getShape().getSize().x) +" "+ to_string(batC2.getShape().getSize().y)+ " ";
-
         
         status = client1.send((char*)(ballData + score +batSendData).c_str());
         if(status != OK)
@@ -225,15 +244,59 @@ int main(int argc, char *argv[])
             cout<<endl<<ballData + batSendData<<endl;
         }
 
-       /* Bat bat (0, windowHeight/2);
-    Bat enemy_bat(windowWidth-bat.getShape().getSize().x, windowHeight/2);*/
+
+        /*ostringstream oss;
+        oss << "OpenSans-Bold.ttf "<<hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y << " ";
+        for (int i = 0; i<16;i++)
+        {
+            oss<<separators[i].getSize().x << " " << separators[i].getSize().y << " ";
+            oss<<separators[i].getPosition().x << " " << separators[i].getPosition().y << " ";
+        }*/
+        ostringstream oss;
+oss << "OpenSans-Bold.ttf " << hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y << " ";
+oss << endl;
+status = client1.send((char*) oss.str().c_str());
+        if(status != OK)
+        {
+            cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 1" << endl;
+            return status;
+        }
+        else
+        {
+            cout << endl<<"(SERVEUR)GraphDATA HUD vers client 1 envoyé avec succes:" << endl;
+            cout<<endl<<oss.str()<<endl;
+        }
+
+        ostringstream oss2; 
+
+for (int i = 0; i < 16; i++) {
+    oss2 << separators[i].getSize().x << " " << separators[i].getSize().y << " ";
+    oss2 << separators[i].getPosition().x << " " << separators[i].getPosition().y << " ";
+}
+
+// Ajoutez une nouvelle ligne à la fin pour faciliter la désérialisation
+oss2 << endl;
+
+        status = client1.send((char*) oss2.str().c_str());
+        if(status != OK)
+        {
+            cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA SEPARATEUR vers client 1" << endl;
+            return status;
+        }
+        else
+        {
+            cout << endl<<"(SERVEUR)GraphDATA SEPARATEUR vers client 1 envoyé avec succes:" << endl;
+            cout<<endl<<oss2.str()<<endl;
+        }
 
 
+        ballData = to_string(windowWidth - ball.getPosition().left - ball.getShape().getSize().x) + " " + to_string(ball.getPosition().top) + " " + to_string(ball.getShape().getSize().x) + " " + to_string(ball.getShape().getSize().y) + " ";
         batSendData="";
         score="" + to_string(scoreC2)+" "+ to_string(scoreC1)+" ";
-        batSendData += to_string(windowWidth - batC2.getPosition().left - batC2.getShape().getSize().x)+" "+ to_string(batC2.getPosition().top) +" "+to_string(batC2.getShape().getSize().x) +" "+ to_string(batC2.getShape().getSize().y)+ " ";
-        batSendData += to_string(windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x)+" "+ to_string(batC1.getPosition().top) +" "+to_string(batC1.getShape().getSize().x) +" "+ to_string(batC1.getShape().getSize().y)+ " ";
-
+        // Inverser les positions des raquettes
+        batSendData += to_string(windowWidth - batC2.getPosition().left - batC2.getShape().getSize().x) + " " + to_string(batC2.getPosition().top) + " " + to_string(batC2.getShape().getSize().x) + " " + to_string(batC2.getShape().getSize().y) + " ";
+        batSendData += to_string(windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x) + " " + to_string(batC1.getPosition().top) + " " + to_string(batC1.getShape().getSize().x) + " " + to_string(batC1.getShape().getSize().y) + " ";
+        
         status = client2.send((char*)(ballData + score +batSendData).c_str());
         if(status != OK)
         {
@@ -244,6 +307,30 @@ int main(int argc, char *argv[])
         {
             cout << endl<<"(SERVEUR)Position ball[4] score[2] bats[8] vers client 2 envoyé avec succes:" << endl;
             cout<<ballData + score+ batSendData<<endl;
+        }
+
+        status = client2.send((char*)oss.str().c_str());
+        if(status != OK)
+        {
+            cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 2" << endl;
+            return status;
+        }
+        else
+        {
+            cout << endl<<"(SERVEUR)GraphDATA HUD vers client 2 envoyé avec succes:" << endl;
+            cout<<endl<<"meme chose que pour client 1";
+        }
+
+        status = client2.send((char*) oss2.str().c_str());
+        if(status != OK)
+        {
+            cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA SEPARATEUR vers client 1" << endl;
+            return status;
+        }
+        else
+        {
+            cout << endl<<"(SERVEUR)GraphDATA SEPARATEUR vers client 1 envoyé avec succes:" << endl;
+            cout<<endl<<oss2.str()<<endl;
         }
 
     }// This is the end of the "while" loop
