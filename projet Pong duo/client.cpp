@@ -52,6 +52,8 @@ int main(int argc, char *argv[])
 
     bool focus;
 
+    cout << endl<<"(CLIENT)initialisation du terrain ......................" << endl;
+
     // Create a HUD (Head Up Display)
 
     status= client.send( (char*)("HUD") );
@@ -79,7 +81,7 @@ int main(int argc, char *argv[])
 
     istringstream iss(graph);
     string fontFilename;
-    int characterSize, fillColor;
+    int characterSize;  Uint32 fillColor;
     float positionX, positionY;
 
     iss >> fontFilename >> characterSize >> fillColor >> positionX >> positionY;
@@ -103,6 +105,9 @@ int main(int argc, char *argv[])
         cout<<"(CLIENT)Données INITIAL(ball,bats et score) reçues du serveur"<<endl;
         //cout<<endl<< graph << endl;
     }
+
+    iss=istringstream(graph);
+
 
     for (int i = 0; i<16;i++)
     {
@@ -149,14 +154,12 @@ int main(int argc, char *argv[])
                 window.close();
             }
 
-
             cout<<endl<<"(CLIENT)Fenetre active 2" << endl;
             string batData="";
-            string enemyBatData="";
             // Send bat position to the server
             if (Keyboard::isKeyPressed(Keyboard::Up))
             {
-                batData += "Up ";
+                batData = "Up";
 
                 status= client.send( (char*)(batData.c_str()) );
                 if (status != OK)
@@ -172,7 +175,7 @@ int main(int argc, char *argv[])
             }
             else if (Keyboard::isKeyPressed(Keyboard::Down))
             {
-                batData += "Down ";
+                batData= "Down";
 
                 status=client.send( (char*)(batData.c_str()) );
                 if (status != OK)
@@ -189,7 +192,7 @@ int main(int argc, char *argv[])
             {
                 cout<<endl<<"(CLIENT)Fenetre non active" << endl;
                 string notData="";
-                notData += "NOT ";
+                notData = "NOT";
                 status=client.send( (char*)(notData.c_str()) );
                 if (status != OK)
                 {
@@ -206,7 +209,7 @@ int main(int argc, char *argv[])
         {
             cout<<endl<<"(CLIENT)Fenetre non active" << endl;
             string notData="";
-            notData += "NOT ";
+            notData = "NOT";
             status=client.send( (char*)(notData.c_str()) );
             if (status != OK)
             {
@@ -218,13 +221,10 @@ int main(int argc, char *argv[])
                 cout<<"(CLIENT)Position des bat envoyé au serveur (NOT move])"<<endl;
             }
         }
-
-
         cout<<"En cours de construction du terrain"<<endl;
 
         char AllData[1024]="";
         status= client.receive(AllData);
-
         if(status != OK)
         {
             cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            cout<<"(CLIENT)Données FINAL(ball,bats et score) reçues du serveur"<<endl;
+            cout<<"(CLIENT)Données FINAL(ball,bats et score) reçues du serveur: "<<endl;
             cout<<endl<< AllData << endl;
         }
         RectangleShape ballShape, batC1Shape, batC2Shape;
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
         iss >> ballLeft >> ballTop
             >> scoreC1 >> scoreC2
             >> batC1Left >> batC1Top 
-            >> batC2Left >> batC2Top ;
+            >> batC2Left >> batC2Top;
 
 
         Ball ball(ballLeft, ballTop);
@@ -273,7 +273,6 @@ int main(int argc, char *argv[])
         }
         // Show everything we just drew
         window.display();
-
 
         cout<<endl<<"!!! (CLIENT) terrain construit avec succes !!!"<<endl;
         //sleep(0.1);

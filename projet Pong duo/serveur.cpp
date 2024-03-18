@@ -99,99 +99,95 @@ int main(int argc, char *argv[])
         return status;
     }
 
-
+    //init game
+    cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
 
     cout <<endl<< "!! (SERVEUR)CLIENT 1 demande HUD !!" << endl;
 
-            ostringstream oss;
-            oss << "OpenSans-Bold.ttf " << hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y << " ";
-            oss << endl;
-            status = client1.send((char*) oss.str().c_str());
-            if(status != OK)
-            {
-                cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 1" << endl;
-                return status;
-            }
-            else
-            {
-                cout << endl<<"(SERVEUR)GraphDATA HUD vers client 1 envoyé avec succes:" << endl;
-                cout<<endl<<oss.str()<<endl;
-            }
+    ostringstream oss;
+    oss << "OpenSans-Bold.ttf " << hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y;
+    status = client1.send((char*) oss.str().c_str());
+    if(status != OK)
+    {
+        cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 1" << endl;
+        return status;
+    }
+    else
+    {
+        cout << endl<<"(SERVEUR)GraphDATA HUD vers client 1 envoyé avec succes:" << endl;
+        cout<<endl<<oss.str()<<endl;
+    }
 
-            ostringstream oss2; 
+    ostringstream oss2; 
 
-            for (int i = 0; i < 16; i++) 
-            {
-                oss2 << separators[i].getSize().x << " " << separators[i].getSize().y << " ";
-                oss2 << separators[i].getPosition().x << " " << separators[i].getPosition().y << " ";
-            }   
-            oss2 << endl;
-            status = client1.send((char*) oss2.str().c_str());
-            if(status != OK)
-            {
-                cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA SEPA vers client 1" << endl;
-                return status;
-            }
-            else
-            {
-                cout << endl<<"(SERVEUR)GraphDATA SEPA vers client 1 envoyé avec succes:" << endl;
-                cout<<endl<<oss2.str()<<endl;
-            }
+    for (int i = 0; i < 16; i++) 
+    {
+        oss2 << separators[i].getSize().x << " " << separators[i].getSize().y << " ";
+        oss2 << separators[i].getPosition().x << " " << separators[i].getPosition().y << " ";
+    }
+    status = client1.send((char *)oss2.str().c_str());
+    if (status != OK)
+    {
+        cout << endl
+             << "(SERVEUR)ERREUR d'envoi GraphDATA SEPA vers client 1" << endl;
+        return status;
+    }
+    else
+    {
+        cout << endl
+             << "(SERVEUR)GraphDATA SEPA vers client 1 envoyé avec succes:" << endl;
+        cout << endl<< oss2.str() << endl;
+    }
 
-            cout <<endl<< "!! (SERVEUR)CLIENT 2 demande HUD !!" << endl;
-            status = client2.send((char*) oss.str().c_str());
-            if(status != OK)
-            {
-                cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 2" << endl;
-                return status;
-            }
-            else
-            {
-                cout << endl<<"(SERVEUR)GraphDATA HUD vers client 2 envoyé avec succes:" << endl;
-                cout<<endl<<oss.str()<<endl;
-            }
+    cout << endl<< "!! (SERVEUR)CLIENT 2 demande HUD !!" << endl;
+    status = client2.send((char *)oss.str().c_str());
+    if (status != OK)
+    {
+        cout << endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 2" << endl;
+        return status;
+    }
+    else
+    {
+        cout << endl<< "(SERVEUR)GraphDATA HUD vers client 2 envoyé avec succes:" << endl;
+        cout << endl<< oss.str() << endl;
+    }
 
-            status = client2.send((char*) oss2.str().c_str());
-            if(status != OK)
-            {
-                cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA SEPA vers client 2" << endl;
-                return status;
-            }
-            else
-            {
-                cout << endl<<"(SERVEUR)GraphDATA SEPA vers client 2 envoyé avec succes:" << endl;
-                cout<<endl<<oss2.str()<<endl;
-            }
+    status = client2.send((char *)oss2.str().c_str());
+    if (status != OK)
+    {
+        cout << endl<< "(SERVEUR)ERREUR d'envoi GraphDATA SEPA vers client 2" << endl;
+        return status;
+    }
+    else
+    {
+        cout << endl<< "(SERVEUR)GraphDATA SEPA vers client 2 envoyé avec succes:" << endl;
+        cout << endl<< oss2.str() << endl;
+    }
 
-        
-    //init game
-    cout << "(SERVEUR)Initialisation du jeu" << endl;
     Bat batC1 (0, 768/2);
     Bat batC2(windowWidth-batC1.getShape().getSize().x, windowHeight/2);
     Ball ball(windowWidth / 2, windowHeight/2);
     bool start = true; 
     int scoreC1=0, scoreC2=0;
 
-    cout << "(SERVEUR)Jeu a commencé" << endl;
+    cout << "(SERVEUR)!!! Jeu initialisé avec succes !!!" << endl;
+    cout << "(SERVEUR)!!! Jeu commence !!!" << endl;
     ball.start();
-
 
     while (start==true)
     {
         //recoit les positions des bats
         cout << "(SERVEUR)En attente d'avoir les positions des bats des clients" << endl;
         char batData[1024]; char enemyBatData[1024];
-        string batSendData = "";
+        string batSendData = ""; string movType="";
         //-------------------------------recoit les positions de la bats client 1 -----------------------------------------------
         status=client1.receive(batData);
         if(status == OK)
         {
             cout << "(SERVEUR)Position bat client 1 reçu" << endl;
             // Analyser les données
-            istringstream iss(batData);// flux iss  va permettre d'extrire les variable 
-            string movType;
-            // Récupérer la position
-            iss >>movType;
+            istringstream iss(batData);// flux iss  va permettre d'extrire les variable ;
+            movType=batData;
             cout << "movType : " << movType << endl;
             if(movType=="Up")
             {
@@ -214,7 +210,6 @@ int main(int argc, char *argv[])
                 cout <<endl<< "!! (SERVEUR)CLIENT 1 N'AS PAS MOVE !!" << endl;
                 cout<<endl<< "!! (SERVEUR) conservation position bat !!";
             }
-           
         }
         else
         {
@@ -228,10 +223,7 @@ int main(int argc, char *argv[])
         {
             cout << "(SERVEUR)Position bat client 2 reçu" << endl;
             // Analyser les données
-            istringstream iss(enemyBatData);// flux iss  va permettre d'extrire les variable 
-            string movType;
-            // Récupérer la position
-            iss >>movType ;
+            movType=enemyBatData;
             if(movType=="Up")
             {
                 if(batC2.getPosition().top > 0)
@@ -253,7 +245,6 @@ int main(int argc, char *argv[])
                 cout <<endl<< "!! (SERVEUR)CLIENT 2 N'AS PAS MOVE !!" << endl;
                 cout<<endl<< "!! (SERVEUR) conservation position bat !!"<<endl;
             }
-            
         }
         else
         {
@@ -293,14 +284,13 @@ int main(int argc, char *argv[])
         batC2.update();
         ball.update();
 
-        string ballData = to_string(ball.getPosition().left) + " " + to_string(ball.getPosition().top) + " ";
-        string score="" + to_string(scoreC1)+" "+ to_string(scoreC2)+" ";
-        batSendData =""+ to_string(batC1.getPosition().left) + " " + to_string(batC1.getPosition().top) + " ";
-        batSendData += to_string(batC2.getPosition().left) + " " + to_string(batC2.getPosition().top) + " ";
+        oss =ostringstream();
+        oss << ball.getPosition().left << " " << ball.getPosition().top << " ";
+        oss << scoreC1 << " " << scoreC2 << " ";
+        oss << batC1.getPosition().left << " " << batC1.getPosition().top << " " ;
+        oss << batC2.getPosition().left << " " << batC2.getPosition().top;
 
-        
-
-        status = client1.send((char*)(ballData + score +batSendData).c_str());
+        status = client1.send((char*)(oss.str().c_str()));
         if(status != OK)
         {
             cout <<endl<< "(SERVEUR)ERREUR d'envoi position ball et bats vers client 1" << endl;
@@ -309,16 +299,16 @@ int main(int argc, char *argv[])
         else
         {
             cout << endl<<"(SERVEUR)Position ball[2] score[2] bats[4] vers client 1 envoyé avec succes:" << endl;
-            cout<<endl<<ballData + batSendData<<endl;
+            cout<<endl<<oss.str()<<endl;
         }
 
-        ballData = ""+to_string(windowWidth - ball.getPosition().left - ball.getShape().getSize().x) + " " + to_string(ball.getPosition().top) + " ";
-        score="" + to_string(scoreC2)+" "+ to_string(scoreC1)+" ";
-        // Inverser les positions des raquettes
-        batSendData =""+ to_string(windowWidth - batC2.getPosition().left - batC2.getShape().getSize().x) + " " + to_string(batC2.getPosition().top) + " ";
-        batSendData += to_string(windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x) + " " + to_string(batC1.getPosition().top) + " ";
+        oss =ostringstream();
+        oss << (windowWidth - ball.getPosition().left - ball.getShape().getSize().x) << " " << ball.getPosition().top << " ";
+        oss << scoreC2 << " " << scoreC1 << " ";
+        oss << (windowWidth - batC2.getPosition().left - batC2.getShape().getSize().x) << " " << batC2.getPosition().top << " ";
+        oss << (windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x) << " " << batC1.getPosition().top;
         
-        status = client2.send((char*)(ballData + score +batSendData).c_str());
+        status = client2.send((char*)(oss.str().c_str()));
         if(status != OK)
         {
             cout << endl<<"(SERVEUR)ERREUR d'envoi position ball et bats vers client 2" << endl;
@@ -327,9 +317,8 @@ int main(int argc, char *argv[])
         else
         {
             cout << endl<<"(SERVEUR)Position ball[2] score[2] bats[4] vers client 2 envoyé avec succes:" << endl;
-            cout<<ballData + score+ batSendData<<endl;
+            cout<<oss.str()<<endl;
         }
-
 
     }// This is the end of the "while" loop
 
