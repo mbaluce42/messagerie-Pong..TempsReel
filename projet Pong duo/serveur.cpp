@@ -252,7 +252,6 @@ int main(int argc, char *argv[])
             return status;
         } 
 
-
         if (ball.getPosition().top > windowHeight | ball.getPosition().top < 0)
         {
             // reverse the ball direction

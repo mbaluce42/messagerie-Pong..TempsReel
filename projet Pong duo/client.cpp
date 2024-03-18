@@ -25,18 +25,11 @@ int main(int argc, char *argv[])
     char* serverAddr = argv[1];
     int serverPort = atoi(argv[2]);
 
-    
-
     // Initialize SFML window
     RenderWindow window(VideoMode(windowWidth, windowHeight), "Pong Client");
 
     Text hud;
     Font font;
-    /*font.loadFromFile("OpenSans-Bold.ttf");
-    hud.setFont(font);
-    hud.setCharacterSize(75);
-    hud.setFillColor(sf::Color::White);
-    hud.setPosition(Vector2f((windowWidth/2)-100,0));*/
     RectangleShape separators[16];
 
     GameClient client;
@@ -171,7 +164,6 @@ int main(int argc, char *argv[])
                 {
                     cout<<"(CLIENT)Position du bat envoyé au serveur (1UP)"<<endl;
                 }
-            
             }
             else if (Keyboard::isKeyPressed(Keyboard::Down))
             {
@@ -277,7 +269,6 @@ int main(int argc, char *argv[])
         cout<<endl<<"!!! (CLIENT) terrain construit avec succes !!!"<<endl;
         //sleep(0.1);
     }
-
 
     return 0;
 }
