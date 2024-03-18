@@ -52,6 +52,68 @@ int main(int argc, char *argv[])
 
     bool focus;
 
+    // Create a HUD (Head Up Display)
+
+    status= client.send( (char*)("HUD") );
+    if(status != OK)
+    {
+        cout<<"(CLIENT)ERREUR envoi de la commande HUD au serveur"<<endl;
+        return status;
+    }
+    else
+    {
+        cout<<"(CLIENT)Commande HUD envoyé au serveur"<<endl;
+    }
+    char graph[1024]="";
+    status=client.receive(graph);
+    if(status != OK)
+    {
+        cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
+        return status;
+    }
+    else
+    {
+        cout<<"(CLIENT)Données HUD reçues du serveur"<<endl;
+        //cout<<endl<< graph << endl;
+    }
+
+    istringstream iss(graph);
+    string fontFilename;
+    int characterSize, fillColor;
+    float positionX, positionY;
+
+    iss >> fontFilename >> characterSize >> fillColor >> positionX >> positionY;
+    font.loadFromFile(fontFilename);
+    hud.setFont(font);
+    hud.setCharacterSize(characterSize);
+    hud.setFillColor(sf::Color(fillColor));
+    hud.setPosition(Vector2f(positionX, positionY));
+
+    // Create separator area
+    memset(graph, 0, 1024);
+
+    status=client.receive(graph);
+    if(status != OK)
+    {
+        cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
+        return status;
+    }
+    else
+    {
+        cout<<"(CLIENT)Données INITIAL(ball,bats et score) reçues du serveur"<<endl;
+        //cout<<endl<< graph << endl;
+    }
+
+    for (int i = 0; i<16;i++)
+    {
+        float sizeX, sizeY, positionX, positionY;
+        iss >> sizeX >> sizeY >> positionX >> positionY;
+        separators[i].setSize(Vector2f(sizeX, sizeY));
+        separators[i].setPosition(Vector2f(positionX, positionY));
+    }
+
+    cout << "(CLIENT)Terrain initialisé" << endl;
+
     while (window.isOpen())
     {
         Event event;
@@ -176,99 +238,31 @@ int main(int argc, char *argv[])
         RectangleShape ballShape, batC1Shape, batC2Shape;
 
         istringstream iss(AllData);// flux iss  va permettre d'extrire les variable de la chaine de caractère
-        float ballLeft, ballTop, ballSizeX, ballSizeY ,
-              batC1Left, batC1Top, batC1SizeX, batC1SizeY,
-              batC2Left, batC2Top, batC2SizeX, batC2SizeY;
+        float ballLeft, ballTop,
+              batC1Left, batC1Top, 
+              batC2Left, batC2Top;
 
-        iss >> ballLeft >> ballTop >> ballSizeX >> ballSizeY
+        iss >> ballLeft >> ballTop
             >> scoreC1 >> scoreC2
-            >> batC1Left >> batC1Top >> batC1SizeX >> batC1SizeY
-            >> batC2Left >> batC2Top >> batC2SizeX >> batC2SizeY;
+            >> batC1Left >> batC1Top 
+            >> batC2Left >> batC2Top ;
 
 
-        ballShape.setSize(Vector2f(ballSizeX, ballSizeY));
-        ballShape.setPosition(Vector2f(ballLeft, ballTop));
-        
-        batC1Shape.setSize(Vector2f(batC1SizeX, batC1SizeY));
-        batC1Shape.setPosition(Vector2f(batC1Left, batC1Top));
-
-        batC2Shape.setSize(Vector2f(batC2SizeX, batC2SizeY));
-        batC2Shape.setPosition(Vector2f(batC2Left, batC2Top));
+        Ball ball(ballLeft, ballTop);
+        Bat batC1(batC1Left, batC1Top);
+        Bat batC2(batC2Left, batC2Top);
 
         std::stringstream ss;
         ss << scoreC1<< "\t" << scoreC2;
         
-        //hud.setString(ss.str());
-
-        char graphData[1024]="";
-        status= client.receive(graphData);
-        if(status != OK)
-        {
-            cout<<"(CLIENT)ERREUR reception des données graphiques du serveur"<<endl;
-            return status;
-        }
-        else
-        {
-            cout<<"(CLIENT)Données graphiques reçues du serveur"<<endl;
-            cout<<endl<< graphData << endl;
-        }
-
-        iss.str(""); // Clear the buffer
-        iss.clear(); // Reset the buffer
-
-        
-        iss = istringstream(graphData);
-        // Deserialize HUD data
-        string fontFilename;
-        int characterSize, fillColor;
-        float positionX, positionY;
-
-        iss >> fontFilename >> characterSize >> fillColor >> positionX >> positionY;
-        font.loadFromFile(fontFilename);
-        hud.setFont(font);
-        hud.setCharacterSize(characterSize);
-        hud.setFillColor(sf::Color(fillColor));
-        hud.setPosition(Vector2f(positionX, positionY));
-
         hud.setString(ss.str());
-
-        memcpy(graphData, "", 1024);
-        status= client.receive(graphData);
-        if(status != OK)
-        {
-            cout<<"(CLIENT)ERREUR reception des données graphiques du serveur"<<endl;
-            return status;
-        }
-        else
-        {
-            cout<<"(CLIENT)Données graphiques reçues du serveur"<<endl;
-            cout<<endl<< graphData << endl;
-        }
-        iss.str(""); // Clear the buffer
-        iss.clear(); // Reset the buffer
-        iss = istringstream(graphData);
-
-
-
-        // Deserialize separators data
-        for (int i = 0; i<16;i++)
-        {
-            float sizeX, sizeY, positionX, positionY;
-            cout <<endl<<"(CLIENT): "<<endl<<iss.str()<<endl;
-            iss >> sizeX >> sizeY >> positionX >> positionY;
-            cout<<endl<<sizeX<<endl<<sizeY<<endl<<positionX<<endl<<positionY<<endl;
-            separators[i].setSize(Vector2f(sizeX, sizeY));
-            separators[i].setPosition(Vector2f(positionX, positionY));
-            
-        }
-
 
         // Clear everything from the last frame
         window.clear(Color(0, 0, 0,255));
         //draw everything
-        window.draw(batC1Shape);
-        window.draw(ballShape);
-        window.draw(batC2Shape);
+        window.draw(batC1.getShape());
+        window.draw(ball.getShape());
+        window.draw(batC2.getShape());
 
         // Draw our score
         window.draw(hud);
