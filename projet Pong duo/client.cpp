@@ -49,21 +49,21 @@ int main(int argc, char *argv[])
 
     // Create a HUD (Head Up Display)
 
-    status= client.send( (char*)("HUD") );
+    status= client.send( (char*)("HUD & SEPARATOR") );
     if(status != OK)
     {
-        cout<<"(CLIENT)ERREUR envoi de la commande HUD au serveur"<<endl;
+        cout<<"(CLIENT)ERREUR envoi de la commande HUD & SEPARATOR au serveur"<<endl;
         return status;
     }
     else
     {
-        cout<<"(CLIENT)Commande HUD envoyé au serveur"<<endl;
+        cout<<"(CLIENT)Commande HUD & SEPARATOR envoyé au serveur"<<endl;
     }
     char graph[1024]="";
     status=client.receive(graph);
     if(status != OK)
     {
-        cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
+        cout<<"(CLIENT)ERREUR reception des données HUD du serveur"<<endl;
         return status;
     }
     else
@@ -90,12 +90,12 @@ int main(int argc, char *argv[])
     status=client.receive(graph);
     if(status != OK)
     {
-        cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
+        cout<<"(CLIENT)ERREUR reception des données SEPARATOR du serveur"<<endl;
         return status;
     }
     else
     {
-        cout<<"(CLIENT)Données INITIAL(ball,bats et score) reçues du serveur"<<endl;
+        cout<<"(CLIENT)Données SEPARATOR reçues du serveur"<<endl;
         //cout<<endl<< graph << endl;
     }
 

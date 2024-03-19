@@ -102,10 +102,19 @@ int main(int argc, char *argv[])
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
 
-    cout <<endl<< "!! (SERVEUR)CLIENT 1 demande HUD !!" << endl;
+    status=client1.receive(buffer);
+    if(status != OK)
+    {
+        cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 1" << endl;
+        return status;
+    }
+    else
+    {
+        cout << "(SERVEUR)Commande HUD & SEPARATOR reçu du client 1" << endl;
+    }
 
     ostringstream oss;
-    oss << "OpenSans-Bold.ttf " << hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y;
+    oss << "OpenSans-Bold.ttf"<<" " << hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y;
     status = client1.send((char*) oss.str().c_str());
     if(status != OK)
     {
@@ -129,38 +138,50 @@ int main(int argc, char *argv[])
     if (status != OK)
     {
         cout << endl
-             << "(SERVEUR)ERREUR d'envoi GraphDATA SEPA vers client 1" << endl;
+             << "(SERVEUR)ERREUR d'envoi SEPARATOR vers client 1" << endl;
         return status;
     }
     else
     {
         cout << endl
-             << "(SERVEUR)GraphDATA SEPA vers client 1 envoyé avec succes:" << endl;
+             << "(SERVEUR)SEPARATOR vers client 1 envoyé avec succes:" << endl;
         cout << endl<< oss2.str() << endl;
     }
 
-    cout << endl<< "!! (SERVEUR)CLIENT 2 demande HUD !!" << endl;
-    status = client2.send((char *)oss.str().c_str());
+
+    status = client2.receive(buffer);
     if (status != OK)
     {
-        cout << endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 2" << endl;
+        cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 2" << endl;
         return status;
     }
     else
     {
-        cout << endl<< "(SERVEUR)GraphDATA HUD vers client 2 envoyé avec succes:" << endl;
+        cout << "(SERVEUR)Commande HUD & SEPARATOR reçu du client 2" << endl;
+    }
+
+
+    status = client2.send((char *)oss.str().c_str());
+    if (status != OK)
+    {
+        cout << endl<< "(SERVEUR)ERREUR d'envoi HUD vers client 2" << endl;
+        return status;
+    }
+    else
+    {
+        cout << endl<< "(SERVEUR)HUD vers client 2 envoyé avec succes:" << endl;
         cout << endl<< oss.str() << endl;
     }
 
     status = client2.send((char *)oss2.str().c_str());
     if (status != OK)
     {
-        cout << endl<< "(SERVEUR)ERREUR d'envoi GraphDATA SEPA vers client 2" << endl;
+        cout << endl<< "(SERVEUR)ERREUR d'envoi SEPARATOR vers client 2" << endl;
         return status;
     }
     else
     {
-        cout << endl<< "(SERVEUR)GraphDATA SEPA vers client 2 envoyé avec succes:" << endl;
+        cout << endl<< "(SERVEUR)SEPARATOR vers client 2 envoyé avec succes:" << endl;
         cout << endl<< oss2.str() << endl;
     }
 
