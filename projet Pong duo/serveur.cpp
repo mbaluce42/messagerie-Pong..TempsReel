@@ -18,7 +18,12 @@ int main(int argc, char *argv[])
     int windowWidth = 1024;
     int windowHeight = 768;
 
-    char buffer[1024];
+    Bat batC1 (0, 768/2);
+    Bat batC2(windowWidth-batC1.getShape().getSize().x, windowHeight/2);
+    Ball ball(windowWidth / 2, windowHeight/2);
+    bool start = true; 
+    int scoreC1=0, scoreC2=0;
+    char Data[1024];
 
     Text hud;
     Font font;
@@ -83,7 +88,7 @@ int main(int argc, char *argv[])
     cout << "(SERVEUR)En attente de connexion des clients(Joueur) :" << endl;
     GameClient client1;
     status=server.acceptClient(&client1);
-    if(status == OK){cout << "(SERVEUR)Client 1 connecté" << endl;}
+    if(status == OK){cout <<endl<< "(SERVEUR)Client 1 connecté" << endl;}
     else
     {
         cout << "(SERVEUR)ERREUR de connexion client 1" << endl;
@@ -92,7 +97,7 @@ int main(int argc, char *argv[])
 
     GameClient client2;
     status=server.acceptClient(&client2);
-    if(status == OK){ cout << "(SERVEUR)Client 2 connecté" << endl;}
+    if(status == OK){ cout << endl<<"(SERVEUR)Client 2 connecté" << endl;}
     else
     {
         cout << "(SERVEUR)ERREUR de connexion client 2" << endl;
@@ -102,7 +107,7 @@ int main(int argc, char *argv[])
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
 
-    status=client1.receive(buffer);
+    status=client1.receive(Data);
     if(status != OK)
     {
         cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 1" << endl;
@@ -123,7 +128,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        cout << endl<<"(SERVEUR)GraphDATA HUD vers client 1 envoyé avec succes:" << endl;
+        cout << endl<<"(SERVEUR)HUD vers client 1 envoyé avec succes:" << endl;
         cout<<endl<<oss.str()<<endl;
     }
 
@@ -137,8 +142,7 @@ int main(int argc, char *argv[])
     status = client1.send((char *)oss2.str().c_str());
     if (status != OK)
     {
-        cout << endl
-             << "(SERVEUR)ERREUR d'envoi SEPARATOR vers client 1" << endl;
+        cout << endl<< "(SERVEUR)ERREUR d'envoi SEPARATOR vers client 1" << endl;
         return status;
     }
     else
@@ -148,8 +152,8 @@ int main(int argc, char *argv[])
         cout << endl<< oss2.str() << endl;
     }
 
-
-    status = client2.receive(buffer);
+    memset(Data, 0, sizeof(Data));
+    status = client2.receive(Data);
     if (status != OK)
     {
         cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 2" << endl;
@@ -185,11 +189,7 @@ int main(int argc, char *argv[])
         cout << endl<< oss2.str() << endl;
     }
 
-    Bat batC1 (0, 768/2);
-    Bat batC2(windowWidth-batC1.getShape().getSize().x, windowHeight/2);
-    Ball ball(windowWidth / 2, windowHeight/2);
-    bool start = true; 
-    int scoreC1=0, scoreC2=0;
+    
 
     cout << "(SERVEUR)!!! Jeu initialisé avec succes !!!" << endl;
     cout << "(SERVEUR)!!! Jeu commence !!!" << endl;
@@ -199,16 +199,45 @@ int main(int argc, char *argv[])
     {
         //recoit les positions des bats
         cout << "(SERVEUR)En attente d'avoir les positions des bats des clients" << endl;
-        char batData[1024]; char enemyBatData[1024];
-        string batSendData = ""; string movType="";
+        string movType="";
+        memset(Data, 0, sizeof(Data));
         //-------------------------------recoit les positions de la bats client 1 -----------------------------------------------
-        status=client1.receive(batData);
+        status=client1.receive(Data);
         if(status == OK)
         {
-            cout << "(SERVEUR)Position bat client 1 reçu" << endl;
+            cout << "(SERVEUR)Even du client 1 reçu" << endl;
+            if(strcmp(Data,"ESC")==0)
+            {
+                cout << "(SERVEUR)Fin de connexion demandée par client 1" << endl;
+                status = client2.send((char*)"ESC");
+                if (status != OK)
+                {
+                    cout << "(SERVEUR)ERREUR d'envoi de message ECHAP au client 2" << endl;
+                    return status;
+                }
+                cout << "(SERVEUR)Fin de connexion envoyée au client 2" << endl;
+                cout<<"(SERVEUR)Fin de connexion"<<endl;
+                server.~GameServer(); start=false;
+                break;
+            }
+
+            else if(strcmp(Data,"CLOSED")==0)
+            {
+                cout << "(SERVEUR)Fin de connexion demandée par client 1" << endl;
+                status = client2.send((char*)"CLOSED");
+                if (status != OK)
+                {
+                    cout << "(SERVEUR)ERREUR d'envoi de message CLOSED au client 2" << endl;
+                    return status;
+                }
+                cout << "(SERVEUR)Fin de connexion envoyée au client 2" << endl;
+                cout<<"(SERVEUR)Fin de connexion"<<endl;
+                server.~GameServer(); start=false;
+                break;
+            }
+
             // Analyser les données
-            istringstream iss(batData);// flux iss  va permettre d'extrire les variable ;
-            movType=batData;
+            movType=Data;
             cout << "movType : " << movType << endl;
             if(movType=="Up")
             {
@@ -238,13 +267,43 @@ int main(int argc, char *argv[])
             return status;
         } 
         //-------------------------------recoit les positions de la bats client 2 -----------------------------------------------
-
-        status=client2.receive(enemyBatData);
+        memset(Data, 0, sizeof(Data));
+        status=client2.receive(Data);
         if(status == OK)
         {
+            if(strcmp(Data,"ESC")==0)
+            {
+                cout << "(SERVEUR)Fin de connexion demandée par client 2" << endl;
+                status = client1.send((char*)"ESC");
+                if (status != OK)
+                {
+                    cout << "(SERVEUR)ERREUR d'envoi de message ECHAP au client 1" << endl;
+                    return status;
+                }
+                cout << "(SERVEUR)Fin de connexion envoyée au client 1" << endl;
+                cout<<"(SERVEUR)Fin de connexion"<<endl;
+                server.~GameServer(); start=false;
+                break;
+            }
+
+            else if(strcmp(Data,"CLOSED")==0)
+            {
+                cout << "(SERVEUR)Fin de connexion demandée par client 2" << endl;
+                status = client1.send((char*)"CLOSED");
+                if (status != OK)
+                {
+                    cout << "(SERVEUR)ERREUR d'envoi de message CLOSED au client 1" << endl;
+                    return status;
+                }
+                cout << "(SERVEUR)Fin de connexion envoyée au client 1" << endl;
+                cout<<"(SERVEUR)Fin de connexion"<<endl;
+                server.~GameServer(); start=false;
+                break;
+            }
+
             cout << "(SERVEUR)Position bat client 2 reçu" << endl;
             // Analyser les données
-            movType=enemyBatData;
+            movType=Data;
             if(movType=="Up")
             {
                 if(batC2.getPosition().top > 0)
@@ -341,5 +400,7 @@ int main(int argc, char *argv[])
         }
 
     }// This is the end of the "while" loop
+
+    return 0;
 
 }
