@@ -21,7 +21,6 @@ int main(int argc, char *argv[])
     Bat batC1 (0, 768/2);
     Bat batC2(windowWidth-batC1.getShape().getSize().x, windowHeight/2);
     Ball ball(windowWidth / 2, windowHeight/2);
-    bool start = true; 
     int scoreC1=0, scoreC2=0;
     char Data[1024];
 
@@ -189,11 +188,11 @@ int main(int argc, char *argv[])
         cout << endl<< oss2.str() << endl;
     }
 
-    
 
     cout << "(SERVEUR)!!! Jeu initialisé avec succes !!!" << endl;
     cout << "(SERVEUR)!!! Jeu commence !!!" << endl;
     ball.start();
+    bool start = true;
 
     while (start==true)
     {
@@ -220,7 +219,6 @@ int main(int argc, char *argv[])
                 server.~GameServer(); start=false;
                 break;
             }
-
             else if(strcmp(Data,"CLOSED")==0)
             {
                 cout << "(SERVEUR)Fin de connexion demandée par client 1" << endl;
