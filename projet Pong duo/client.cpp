@@ -26,14 +26,14 @@ int main(int argc, char *argv[])
 
     if (argc < 3)
     {
-        std::cout << "Usage: " << argv[0] << " <server_address> <server_port>" << std::endl;
+        cout << "Usage: " << argv[0] << " <server_address> <server_port>" << std::endl;
         return -1;
     }
 
     char* serverAddr = argv[1];
     int serverPort = atoi(argv[2]);
 
-
+//client va se connecter au serveur
     int status = client.join(serverAddr, serverPort);
     if (status != OK)
     {

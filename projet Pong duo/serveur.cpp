@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     int windowWidth = 1024;
     int windowHeight = 768;
 
-    Bat batC1 (0, 768/2);
+    Bat batC1 (0, windowHeight/2);
     Bat batC2(windowWidth-batC1.getShape().getSize().x, windowHeight/2);
     Ball ball(windowWidth / 2, windowHeight/2);
     int scoreC1=0, scoreC2=0;
@@ -340,13 +340,18 @@ int main(int argc, char *argv[])
         if (ball.getPosition().left < 0)
         {
             ball.hitSide(windowWidth/2, windowHeight/2);
-            scoreC2++;    
+            scoreC2++;
+            batC1.setYPosition(windowHeight/2);
+            batC2.setYPosition(windowHeight/2);
+
         }
         // Handle ball hitting side
         if (ball.getPosition().left > windowWidth)
         {
             ball.hitSide(windowWidth/2, windowHeight/2);
-            scoreC1++;        
+            scoreC1++;
+            batC1.setYPosition(windowHeight/2);
+            batC2.setYPosition(windowHeight/2); 
         }
             
         // Has the ball hit the bat?
