@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
                 }
                 cout << "(SERVEUR)Fin de connexion envoyée au client 2" << endl;
                 cout<<"(SERVEUR)Fin de connexion"<<endl;
-                server.~GameServer(); start=false;
+                start=false;
                 break;
             }
             else if(strcmp(Data,"CLOSED")==0)
@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
                 }
                 cout << "(SERVEUR)Fin de connexion envoyée au client 2" << endl;
                 cout<<"(SERVEUR)Fin de connexion"<<endl;
-                server.~GameServer(); start=false;
+                start=false;
                 break;
             }
 
@@ -280,7 +280,7 @@ int main(int argc, char *argv[])
                 }
                 cout << "(SERVEUR)Fin de connexion envoyée au client 1" << endl;
                 cout<<"(SERVEUR)Fin de connexion"<<endl;
-                server.~GameServer(); start=false;
+                start=false;
                 break;
             }
 
@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
                 }
                 cout << "(SERVEUR)Fin de connexion envoyée au client 1" << endl;
                 cout<<"(SERVEUR)Fin de connexion"<<endl;
-                server.~GameServer(); start=false;
+                start=false;
                 break;
             }
 

@@ -128,7 +128,6 @@ int main(int argc, char *argv[])
                 else
                 {
                     cout<<"(CLIENT)Message envoyé au serveur (CLOSED)"<<endl;
-                    client.~GameClient();
                     window.close(); 
                     cout<<endl<<"(CLIENT)Fenetre fermée" << endl;
                     return 0;
@@ -151,7 +150,6 @@ int main(int argc, char *argv[])
                 {
                     cout<<"(CLIENT)Message envoyé au serveur (ESC) succes"<<endl;
                     cout<<"(CLIENT)Fin de connexion " << endl;
-                    client.~GameClient();
                     window.close();
                     break;
                 }
@@ -231,7 +229,7 @@ int main(int argc, char *argv[])
             cout << "(CLIENT)Fin de connexion confirmée" << endl;
             break;
         }
-        if(strcmp(AllData, "CLOSED") == 0)
+        else if(strcmp(AllData, "CLOSED") == 0)
         {
             cout<<"(CLIENT)Fin de connexion Recu (CLOSED)" << endl;
             cout << "(CLIENT)Fin de connexion confirmée" << endl;
