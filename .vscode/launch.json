@@ -1,0 +1,77 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Client 1",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/dell44/Desktop/Temps reel labo ressource/projet Pong duo/client", // Chemin vers le premier client exécutable
+            "args": ["127.0.0.1", "8080"], // Arguments du premier client
+            "stopAtEntry": false,
+            "cwd": "/home/dell44/Desktop/Temps reel labo ressource/projet Pong duo",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Activer l'impression en mode Pretty pour gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Définir la version désassemblage sur Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Client 2",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/dell44/Desktop/Temps reel labo ressource/projet Pong duo/client", // Chemin vers le deuxième client exécutable
+            "args": ["127.0.0.1", "8080"], // Arguments du deuxième client
+            "stopAtEntry": false,
+            "cwd": "/home/dell44/Desktop/Temps reel labo ressource/projet Pong duo",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Activer l'impression en mode Pretty pour gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Définir la version désassemblage sur Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Serveur",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/dell44/Desktop/Temps reel labo ressource/projet Pong duo/serveur", // Chemin vers le serveur exécutable
+            "args": ["8080"], // Arguments du serveur
+            "stopAtEntry": false,
+            "cwd": "/home/dell44/Desktop/Temps reel labo ressource/projet Pong duo",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Activer l'impression en mode Pretty pour gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Définir la version désassemblage sur Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

@@ -37,4 +37,12 @@ void Bat::update()
 void Bat::setYPosition(float y){
 	position.y = y;
 }
+void Bat::setXPosition(float x){
+    position.x = x;
+}
+void Bat::setPosition(float x, float y){
+    position.x = x;
+    position.y = y;
+    batShape.setPosition(position);
+}
 
