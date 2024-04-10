@@ -43,8 +43,6 @@ int main(int argc, char *argv[])
 
     cout << "(CLIENT)Connection au serveur REUSSI" << endl;
     
-    
-
     RenderWindow window(VideoMode(windowWidth, windowHeight), "Pong Client");
     Text hud;
     Font font;
@@ -69,7 +67,11 @@ int main(int argc, char *argv[])
     else
         cout << "(CLIENT)HUD et SEPARATOR initialisé" << endl;
 
+    //afficheTerrain(hud, separators, window, ss, ball, batC1, batC2);
+
     cout << "(CLIENT)Terrain initialisé" << endl;
+
+
 
     while (window.isOpen())
     {

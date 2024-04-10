@@ -9,6 +9,7 @@ GameClient::GameClient(mysocket receive_socket, mysocket send_socket){
     this->client_status = READY;
 }
 GameClient::~GameClient(){
+    std::cout<<"Destruction du client"<<std::endl;
     if(this->client_status==READY){
         close(this->receive_socket.socket);
         close(this->send_socket.socket);
