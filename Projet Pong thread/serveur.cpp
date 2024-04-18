@@ -29,6 +29,24 @@ int SendInfoToClient(GameClient &client, Ball &ball, Bat &batC1, Bat &batC2, int
 int SendAllInfoToClients(GameClient &client1, GameClient &client2, Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2);
 int stopConnection(GameClient& client1, GameClient& client2);
 
+
+void *FctThreadReceive(void *setting);
+
+
+void signalReceiveData();
+
+pthread_t threadRecv;
+
+pthread_mutex_t mutexReceive = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_cond_t condReceive = PTHREAD_COND_INITIALIZER;
+
+
+bool recvDataAvailable=false;
+char receivedData[1024];
+
+int threadStatus = 0;
+
 int main(int argc, char *argv[])
 {
 
@@ -480,4 +498,50 @@ int stopConnection(GameClient &client1, GameClient &client2, string Data,bool is
         cout << "(SERVEUR)Fin de connexion" << endl;
         return 99;
     }
+}
+
+void *FctThreadReceive(void *setting)
+{
+    GameClient *client = (GameClient *)setting;
+    while (1)
+    {
+        pthread_mutex_lock(&mutexReceive);
+        while (!recvDataAvailable)
+        {
+            pthread_cond_wait(&condReceive, &mutexReceive);
+        }
+
+        threadStatus = client->receiveNonBlocking(receivedData, 3000);
+
+        if (threadStatus == TIMEOUT)
+        {
+            // Gérer le cas où le receive a expiré
+            continue;
+        }
+        else if (threadStatus != OK)
+        {
+            // Gérer l'erreur de receive
+            cout << "(CLIENT)ERREUR reception des données du serveur" << endl;
+            break;
+        }
+        else
+        {
+            // Gérer le cas où le receive a réussi
+            cout << "(CLIENT)Données reçues du serveur " << receivedData << endl;
+        }
+        recvDataAvailable=false;
+        pthread_mutex_unlock(&mutexReceive);
+    }
+
+    pthread_exit(NULL);
+}
+
+
+void signalReceiveData()
+{
+    pthread_mutex_lock(&mutexReceive);
+    recvDataAvailable = true;
+    pthread_mutex_unlock(&mutexReceive);
+    pthread_cond_signal(&condReceive);
+    
 }
