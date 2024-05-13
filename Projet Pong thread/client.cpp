@@ -46,16 +46,19 @@ bool receiveDataAvailable=false;
 
 
 GameClient* client=new GameClient();
+int forLag=0;
 
 int main(int argc, char *argv[])
 {
     if (argc < 3)
     {
-        cout << "Usage: " << argv[0] << " <server_address> <server_port>" << endl;
+        cout << "Usage: " << argv[0] << " <server_address> <server_port> <sec_for_Sim_Lag>" << endl;
         return -1;
     }
     char* ipAdresse = argv[1];
     int port = atoi(argv[2]);
+    forLag = atoi(argv[3]);
+
 
     //client va se connecter au serveur
     int status = client->join(ipAdresse, port);
@@ -396,6 +399,11 @@ void *FctThreadReceive(void *setting)
     {
         char Data[1024];
         int status = client->receiveNonBlocking(Data, 300);
+
+        struct timespec wait;
+        wait.tv_sec = forLag;
+        wait.tv_nsec = 0;
+        nanosleep(&wait, NULL);
 
         if (status == TIMEOUT)
         {

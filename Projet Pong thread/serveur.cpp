@@ -6,7 +6,8 @@
 #include "bat.h"
 #include "ball.h"
 #include "Status.h"
-#include <thread>
+#include <pthread.h>
+#include <queue>
 #include <SFML/Graphics.hpp>
 
 using namespace std;
@@ -16,9 +17,9 @@ int windowHeight = 768;
 
 int initServer(GameServer& server);
 
-int initGame(GameClient* client1, GameClient* client2, Text& hud,string fontPath , RectangleShape (&separators)[16]);
+int initGame(Text& hud,string fontPath , RectangleShape (&separators)[16]);
 
-int sendHudSeparator(GameClient* client, Text& hud, string fontPath, RectangleShape (&separators)[16]);
+int sendHudSeparator(Text& hud, string fontPath, RectangleShape (&separators)[16],bool isClient1);
 
 int AnalyseEvent(Bat &batC1, Bat &batC2);
 
@@ -29,8 +30,32 @@ int SendInfoToClient(GameClient *client, Ball &ball, Bat &batC1, Bat &batC2, int
 int SendAllInfoToClients(Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2);
 int stopConnection(string Data,bool isClient1);
 
+void *FctThreadReceive(void *setting);
+void handleThreadReceiveStatus(int status, char *Data, bool isClient1);
+int receiveDataClient1(string& data);
+int receiveDataClient2(string& data);
+
 GameClient* client1=new GameClient();
 GameClient* client2=new GameClient();
+
+pthread_t threadRecv;
+
+pthread_mutex_t mutexReceiveClient1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condReceiveClient1 = PTHREAD_COND_INITIALIZER;
+queue<string> receivedQueueClient1; //fifo
+bool receiveDataAvailableClient1=false;
+
+pthread_mutex_t mutexReceiveClient2 = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condReceiveClient2 = PTHREAD_COND_INITIALIZER;
+queue<string> receivedQueueClient2; //fifoµ
+bool receiveDataAvailableClient2=false;
+
+
+
+bool erreurRcv = false;
+pthread_mutex_t mutexErreurRcv = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condErreur = PTHREAD_COND_INITIALIZER;
+
 
 int main(int argc, char *argv[])
 {
@@ -53,7 +78,27 @@ int main(int argc, char *argv[])
         return status;
     }
 
+    
+    cout << "(SERVEUR)En attente de connexion du client 1 puis 2 :" << endl;
+    status = server.acceptClient(client1);
+    if(status != OK)
+    {
+        cout << "(SERVEUR)ERREUR de connexion client " << endl;
+        return status;
+    }
+    cout << "(SERVEUR)Client 1 connecté" << endl;
 
+    status = server.acceptClient(client2);
+    if(status != OK)
+    {
+        cout << "(SERVEUR)ERREUR de connexion client " << endl;
+        return status;
+    }
+    cout << "(SERVEUR)Client 2 connecté" << endl;
+
+    int res=pthread_create(&threadRecv, NULL, FctThreadReceive,NULL);
+    if(res==0){cout<<endl<<"ThreadRecv " + to_string(threadRecv) + " cree avec succe"<<endl;}
+    else{cout<<endl<<"ERREUR creation ThreadRecv"<<endl; return -1;}
 
     Bat batC1 (0, windowHeight/2);
     Bat batC2(windowWidth-batC1.getShape().getSize().x, windowHeight/2);
@@ -79,30 +124,14 @@ int main(int argc, char *argv[])
     }
 
 
-    cout << "(SERVEUR)En attente de connexion du client 1 puis 2 :" << endl;
-    status = server.acceptClient(client1);
-    if(status != OK)
-    {
-        cout << "(SERVEUR)ERREUR de connexion client " << endl;
-        return status;
-    }
-    cout << "(SERVEUR)Client 1 connecté" << endl;
-
-    status = server.acceptClient(client2);
-    if(status != OK)
-    {
-        cout << "(SERVEUR)ERREUR de connexion client " << endl;
-        return status;
-    }
-    cout << "(SERVEUR)Client 2 connecté" << endl;
-
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
 
-   status=initGame(client1, client2, hud, "OpenSans-Bold.ttf", separators);
+   status=initGame(hud, "OpenSans-Bold.ttf", separators);
     if(status != OK)
     {
         cout << "(SERVEUR)ERREUR d'initialisation du jeu" << endl;
+        pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
         return status;
     }
 
@@ -124,6 +153,7 @@ int main(int argc, char *argv[])
             }
             
             cout << "(SERVEUR)ERREUR d'analyse des Evenements" << endl;
+            pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
             return status;
         }
 
@@ -133,11 +163,14 @@ int main(int argc, char *argv[])
         if(status != OK)
         {
             cout << "(SERVEUR)ERREUR d'envoi des positions ball et bats aux clients" << endl;
+            pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
             return status;
         }
 
     }// This is the end of the "while" loop
 
+    pthread_cancel(threadRecv);
+    pthread_join(threadRecv, NULL);
     return 0;
 }
 
@@ -178,17 +211,17 @@ int initServer(GameServer& server)
 }
 
 
-int initGame(GameClient* client1, GameClient* client2, Text& hud,string fontPath , RectangleShape (&separators)[16])
+int initGame(Text& hud,string fontPath , RectangleShape (&separators)[16])
 {
     int status;
-    status = sendHudSeparator(client1, hud, fontPath, separators);
+    status = sendHudSeparator(hud, fontPath, separators, true);
     if(status != OK)
     {
         cout << "(SERVEUR)ERREUR d'initialisation de HUD & SEPARATOR pour client 1" << endl;
         return status;
     }
 
-    status = sendHudSeparator(client2, hud, fontPath, separators);
+    status = sendHudSeparator(hud, fontPath, separators, false);
     if(status != OK)
     {
         cout << "(SERVEUR)ERREUR d'initialisation de HUD & SEPARATOR pour client 2" << endl;
@@ -201,33 +234,37 @@ int initGame(GameClient* client1, GameClient* client2, Text& hud,string fontPath
     return OK;
 }
 
-int sendHudSeparator(GameClient* client, Text& hud, string fontPath, RectangleShape (&separators)[16])
+int sendHudSeparator(Text& hud, string fontPath, RectangleShape (&separators)[16],bool isClient1)
 {
-    char Data[1024];
+    string Data;
     int status=OK;
-    status=client->receive(Data);
-    if(status != OK)
+    if(isClient1)
     {
-        cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 1" << endl;
-        return status;
-    }
-    
-    cout << "(SERVEUR)Commande HUD & SEPARATOR reçu du client 1" << endl;
-    
-    ostringstream oss_HUD;
-    oss_HUD << fontPath<<" " << hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y;
-    status = client->send((char*) oss_HUD.str().c_str());
-    if(status != OK)
-    {
-        cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 1" << endl;
-        return status;
+        //send HUD & SEPARATOR to client 1
+        status=receiveDataClient1(Data);
+        if(status != OK)
+        {
+            cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 1" << endl;
+            return status;
+        }
     }
     else
     {
-        cout << endl<<"(SERVEUR)HUD vers client 1 envoyé avec succes:" << endl;
-        cout<<endl<<oss_HUD.str()<<endl;
+        //send HUD & SEPARATOR to client 2
+        status=receiveDataClient2(Data);
+        if(status != OK)
+        {
+            cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 2" << endl;
+            return status;
+        }
     }
 
+    cout << "(SERVEUR)Commande HUD & SEPARATOR reçu du client "<<((isClient1) ? "1" : "2") << endl;
+
+    //serialisation et envoie de HUD & SEPARATOR au client
+    ostringstream oss_HUD;
+    oss_HUD << fontPath<<" " << hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y;
+    
     ostringstream oss_sepa; 
 
     for (int i = 0; i < 16; i++) 
@@ -235,16 +272,59 @@ int sendHudSeparator(GameClient* client, Text& hud, string fontPath, RectangleSh
         oss_sepa << separators[i].getSize().x << " " << separators[i].getSize().y << " ";
         oss_sepa << separators[i].getPosition().x << " " << separators[i].getPosition().y << " ";
     }
-    status = client->send((char *)oss_sepa.str().c_str());
-    if (status != OK)
+
+    if(isClient1)
     {
-        cout << endl<< "(SERVEUR)ERREUR d'envoi SEPARATOR vers client 1" << endl;
-        return status;
+        status = client1->send((char*) oss_HUD.str().c_str());
+        if(status != OK)
+        {
+            cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 1" << endl;
+            return status;
+        }
+        else
+        {
+            cout << endl<<"(SERVEUR)HUD vers client 1 envoyé avec succes:" << endl;
+            cout<<endl<<oss_HUD.str()<<endl;
+        }
+
+         status = client1->send((char *)oss_sepa.str().c_str());
+        if (status != OK)
+        {
+            cout << endl<< "(SERVEUR)ERREUR d'envoi SEPARATOR vers client 1" << endl;
+            return status;
+        }
+        else
+        {
+            cout << endl<< "(SERVEUR)SEPARATOR vers client 1 envoyé avec succes:" << endl;
+            cout << endl<< oss_sepa.str() << endl;
+        }
+
     }
     else
     {
-        cout << endl<< "(SERVEUR)SEPARATOR vers client 1 envoyé avec succes:" << endl;
-        cout << endl<< oss_sepa.str() << endl;
+         status = client2->send((char*) oss_HUD.str().c_str());
+        if(status != OK)
+        {
+            cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 2" << endl;
+            return status;
+        }
+        else
+        {
+            cout << endl<<"(SERVEUR)HUD vers client 2 envoyé avec succes:" << endl;
+            cout<<endl<<oss_HUD.str()<<endl;
+        }
+
+         status = client2->send((char *)oss_sepa.str().c_str());
+        if (status != OK)
+        {
+            cout << endl<< "(SERVEUR)ERREUR d'envoi SEPARATOR vers client 2" << endl;
+            return status;
+        }
+        else
+        {
+            cout << endl<< "(SERVEUR)SEPARATOR vers client 2 envoyé avec succes:" << endl;
+            cout << endl<< oss_sepa.str() << endl;
+        }
     }
 
     return OK;
@@ -252,15 +332,15 @@ int sendHudSeparator(GameClient* client, Text& hud, string fontPath, RectangleSh
 
 int AnalyseEvent(Bat &batC1, Bat &batC2)
 {
-    char Data[1024];
+    string Data;
     int status = OK;
 
     // Client 1
-    status = client1->receive(Data);
+    status = receiveDataClient1(Data);
     if (status == OK)
     {
         cout << "(SERVEUR)Even du client 1 reçu" << endl;
-        if (strcmp(Data, "STOP") == 0)
+        if (Data=="STOP")
         {
             cout << "(SERVEUR)Fin de connexion demandée par client 1" << endl;
             status = client2->send((char *)"STOP");
@@ -274,10 +354,9 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
             return 99;
         }
 
-        // Analyser les données du client 1
-        string movType = Data;
-        cout << "movType : " << movType << endl;
-        if (movType == "Up")
+        // Analyser les données du client 1 (mouvement bat)
+        cout << "Mouvement bat : " << Data << endl;
+        if (Data == "Up")
         {
             if (batC1.getPosition().top > 0)
             {
@@ -285,7 +364,7 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
                 batC1.moveUp();
             }
         }
-        else if (movType == "Down")
+        else if (Data == "Down")
         {
             if (batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
             {
@@ -306,11 +385,11 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
     }
 
     // Client 2
-    status = client2->receive(Data);
+    status = receiveDataClient2(Data);
     if (status == OK)
     {
         cout << "(SERVEUR)Even du client 2 reçu" << endl;
-        if (strcmp(Data, "STOP") == 0)
+        if (Data=="STOP")
         {
             cout << "(SERVEUR)Fin de connexion demandée par client 2" << endl;
             status = client1->send((char *)"STOP");
@@ -324,10 +403,9 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
             return 99;
         }
 
-        // Analyser les données du client 2
-        string movType = Data;
-        cout << "movType : " << movType << endl;
-        if (movType == "Up")
+        // Analyser les données du client 2 (²mouvement bat)
+        cout << "Mouvement bat : " << Data<< endl;
+        if (Data == "Up")
         {
             if (batC2.getPosition().top > 0)
             {
@@ -335,7 +413,7 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
                 batC2.moveUp();
             }
         }
-        else if (movType == "Down")
+        else if (Data == "Down")
         {
             if (batC2.getPosition().top < windowHeight - batC2.getShape().getSize().y)
             {
@@ -479,3 +557,158 @@ int stopConnection(string Data,bool isClient1)
 }
 
 
+
+void *FctThreadReceive(void *setting)
+{
+    while (1)
+    {
+        char Data[1024];
+        int status;
+
+        // Reception du client 1
+        status = client1->receiveNonBlocking(Data, 300);
+        handleThreadReceiveStatus(status, Data, true);
+
+        // Reception du client 2
+        status = client2->receiveNonBlocking(Data, 300);
+        handleThreadReceiveStatus(status, Data, false);
+    }
+    pthread_exit(NULL);
+}
+
+void handleThreadReceiveStatus(int status, char *Data, bool isClient1)
+{
+    if (isClient1)
+    {
+
+        if (status == TIMEOUT)
+        {
+            // cout<<endl<<"timeout = front queue="<<receivedQueue.front()<<endl;
+            pthread_mutex_lock(&mutexReceiveClient1);
+            if (!receivedQueueClient1.empty())
+            {
+                receiveDataAvailableClient1 = true;
+                pthread_cond_signal(&condReceiveClient1);
+            }
+            pthread_mutex_unlock(&mutexReceiveClient1);
+
+        }
+        else if (status != OK)
+        {
+            cout << "(CLIENT threadReceive)ERREUR reception des données du serveur" << endl;
+            pthread_mutex_lock(&mutexErreurRcv);
+            erreurRcv = true;
+            pthread_cond_signal(&condErreur);
+            pthread_mutex_unlock(&mutexErreurRcv);
+            //break;
+        }
+        else
+        {
+            cout << "(CLIENT threadReceive)Données reçues du serveur " << Data << endl;
+            pthread_mutex_lock(&mutexReceiveClient1);
+            string tmp(Data);
+            receivedQueueClient1.push(tmp);
+            receiveDataAvailableClient1 = true;
+            pthread_cond_signal(&condReceiveClient1);
+            pthread_mutex_unlock(&mutexReceiveClient1);
+        }
+    }
+    else
+    {
+        if (status == TIMEOUT)
+        {
+            // cout<<endl<<"timeout = front queue="<<receivedQueue.front()<<endl;
+            pthread_mutex_lock(&mutexReceiveClient2);
+            if (!receivedQueueClient2.empty())
+            {
+                receiveDataAvailableClient2 = true;
+                pthread_cond_signal(&condReceiveClient2);
+            }
+            pthread_mutex_unlock(&mutexReceiveClient2);
+        }
+        else if (status != OK)
+        {
+            cout << "(CLIENT threadReceive)ERREUR reception des données du serveur" << endl;
+            pthread_mutex_lock(&mutexErreurRcv);
+            erreurRcv = true;
+            pthread_cond_signal(&condErreur);
+            pthread_mutex_unlock(&mutexErreurRcv);
+           // break;
+        }
+        else
+        {
+            cout << "(CLIENT threadReceive)Données reçues du serveur " << Data << endl;
+            pthread_mutex_lock(&mutexReceiveClient2);
+            string tmp(Data);
+            receivedQueueClient2.push(tmp);
+            receiveDataAvailableClient2 = true;
+            pthread_cond_signal(&condReceiveClient2);
+            pthread_mutex_unlock(&mutexReceiveClient2);
+        }
+    }
+}
+
+
+int receiveDataClient1(string& data)
+{
+    pthread_mutex_lock(&mutexReceiveClient1);
+    while (!receiveDataAvailableClient1 && !erreurRcv) 
+    {
+        pthread_cond_wait(&condReceiveClient1, &mutexReceiveClient1);
+    }
+
+    if (erreurRcv)
+    {
+        pthread_mutex_unlock(&mutexReceiveClient1);
+        cout<<endl<<"(CLIENT1) fct receiveData()) Erreur de Receive"<<endl;
+        return ERROR;
+    }
+
+    if (!receivedQueueClient1.empty())
+    {
+        data =String( receivedQueueClient1.front() );
+        receivedQueueClient1.pop();
+        cout << "(CLIENT1) fct receiveData())Données reçues du serveur: " << data << endl;
+    }
+    else
+    {
+        cout << "(CLIENT1) La file d'attente est vide" << endl;
+        //return ERROR; // Ou un autre code d'erreur approprié
+    }
+
+    receiveDataAvailableClient1 = false;
+    pthread_mutex_unlock(&mutexReceiveClient1);
+    return OK;
+}
+
+int receiveDataClient2(string& data)
+{
+    pthread_mutex_lock(&mutexReceiveClient2);
+    while (!receiveDataAvailableClient2 && !erreurRcv) 
+    {
+        pthread_cond_wait(&condReceiveClient2, &mutexReceiveClient2);
+    }
+
+    if (erreurRcv)
+    {
+        pthread_mutex_unlock(&mutexReceiveClient2);
+        cout<<endl<<"(CLIENT2) fct receiveData()) Erreur de Receive"<<endl;
+        return ERROR;
+    }
+
+    if (!receivedQueueClient2.empty())
+    {
+        data =String( receivedQueueClient2.front() );
+        receivedQueueClient2.pop();
+        cout << "(CLIENT2) fct receiveData())Données reçues du serveur: " << data << endl;
+    }
+    else
+    {
+        cout << "(CLIENT2) La file d'attente est vide" << endl;
+        //return ERROR; // Ou un autre code d'erreur approprié
+    }
+
+    receiveDataAvailableClient2 = false;
+    pthread_mutex_unlock(&mutexReceiveClient2);
+    return OK;
+}
