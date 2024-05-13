@@ -19,8 +19,8 @@ void Ball::start(){
   if(((double)rand())/((double)RAND_MAX) >=0.5)
 	yVelocity = yVelocity*-1;
 */
-	xVelocity = -0.3f;
-	yVelocity = 0.3f;
+	xVelocity = -0.4f;
+	yVelocity = 0.4f;
 }
 
 FloatRect Ball::getPosition()

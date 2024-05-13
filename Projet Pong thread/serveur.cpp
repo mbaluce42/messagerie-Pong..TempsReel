@@ -123,6 +123,8 @@ int main(int argc, char *argv[])
         y_sepa+=64;
     }
 
+    const int tickRate = 64; // Taux de rafraîchissement en Hz
+    const int tickDuration = 1000000 / tickRate; // Durée d'une boucle en microsecondes
 
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
@@ -166,6 +168,8 @@ int main(int argc, char *argv[])
             pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
             return status;
         }
+
+        usleep(tickDuration);
 
     }// This is the end of the "while" loop
 
