@@ -15,37 +15,22 @@ int windowWidth = 1024;
 int windowHeight = 768;
 
 int initServer(GameServer& server);
-int waitClient(GameServer& server, GameClient& client);
-int initGame(GameClient& client1, GameClient& client2, Text& hud,string fontPath , RectangleShape (&separators)[16]);
 
-int sendHudSeparator(GameClient& client, Text& hud, string fontPath, RectangleShape (&separators)[16]);
+int initGame(GameClient* client1, GameClient* client2, Text& hud,string fontPath , RectangleShape (&separators)[16]);
 
-int AnalyseEvent(GameClient &client1, GameClient &client2, Bat &batC1, Bat &batC2);
+int sendHudSeparator(GameClient* client, Text& hud, string fontPath, RectangleShape (&separators)[16]);
+
+int AnalyseEvent(Bat &batC1, Bat &batC2);
 
 void HandleBall(Ball &ball, Bat &batC1, Bat &batC2, int &scoreC1, int &scoreC2);
 
-int SendInfoToClient(GameClient &client, Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2, bool isClient1);
+int SendInfoToClient(GameClient *client, Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2, bool isClient1);
 
-int SendAllInfoToClients(GameClient &client1, GameClient &client2, Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2);
-int stopConnection(GameClient& client1, GameClient& client2);
+int SendAllInfoToClients(Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2);
+int stopConnection(string Data,bool isClient1);
 
-
-void *FctThreadReceive(void *setting);
-
-
-void signalReceiveData();
-
-pthread_t threadRecv;
-
-pthread_mutex_t mutexReceive = PTHREAD_MUTEX_INITIALIZER;
-
-pthread_cond_t condReceive = PTHREAD_COND_INITIALIZER;
-
-
-bool recvDataAvailable=false;
-char receivedData[1024];
-
-int threadStatus = 0;
+GameClient* client1=new GameClient();
+GameClient* client2=new GameClient();
 
 int main(int argc, char *argv[])
 {
@@ -95,14 +80,20 @@ int main(int argc, char *argv[])
 
 
     cout << "(SERVEUR)En attente de connexion du client 1 puis 2 :" << endl;
-    GameClient client1;
-    status=waitClient(server, client1);
-    if(status !=OK){ return status;}
+    status = server.acceptClient(client1);
+    if(status != OK)
+    {
+        cout << "(SERVEUR)ERREUR de connexion client " << endl;
+        return status;
+    }
     cout << "(SERVEUR)Client 1 connecté" << endl;
 
-    GameClient client2;
-    status=waitClient(server, client2);
-    if(status !=OK){ return status;}
+    status = server.acceptClient(client2);
+    if(status != OK)
+    {
+        cout << "(SERVEUR)ERREUR de connexion client " << endl;
+        return status;
+    }
     cout << "(SERVEUR)Client 2 connecté" << endl;
 
     //init game
@@ -123,7 +114,7 @@ int main(int argc, char *argv[])
     while (start==true)
     {
         cout << "(SERVEUR)En attente d'Even des clients ; 1 puis 2" << endl;
-        status = AnalyseEvent(client1, client2, batC1, batC2);
+        status = AnalyseEvent(batC1, batC2);
         if (status != OK)
         {
             if (status == 99)
@@ -138,7 +129,7 @@ int main(int argc, char *argv[])
 
         HandleBall(ball, batC1, batC2, scoreC1, scoreC2);
         //send all info to clients
-        status= SendAllInfoToClients(client1, client2, ball, batC1, batC2, scoreC1, scoreC2);
+        status= SendAllInfoToClients(ball, batC1, batC2, scoreC1, scoreC2);
         if(status != OK)
         {
             cout << "(SERVEUR)ERREUR d'envoi des positions ball et bats aux clients" << endl;
@@ -186,20 +177,8 @@ int initServer(GameServer& server)
     return status;
 }
 
-int waitClient(GameServer& server, GameClient& client)
-{
-    int status;
-    status = server.acceptClient(&client);
-    if(status != OK)
-    {
-        cout << "(SERVEUR)ERREUR de connexion client " << endl;
-        return status;
-    }
 
-    return OK;
-}
-
-int initGame(GameClient& client1, GameClient& client2, Text& hud,string fontPath , RectangleShape (&separators)[16])
+int initGame(GameClient* client1, GameClient* client2, Text& hud,string fontPath , RectangleShape (&separators)[16])
 {
     int status;
     status = sendHudSeparator(client1, hud, fontPath, separators);
@@ -222,11 +201,11 @@ int initGame(GameClient& client1, GameClient& client2, Text& hud,string fontPath
     return OK;
 }
 
-int sendHudSeparator(GameClient& client, Text& hud, string fontPath, RectangleShape (&separators)[16])
+int sendHudSeparator(GameClient* client, Text& hud, string fontPath, RectangleShape (&separators)[16])
 {
     char Data[1024];
     int status=OK;
-    status=client.receive(Data);
+    status=client->receive(Data);
     if(status != OK)
     {
         cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 1" << endl;
@@ -237,7 +216,7 @@ int sendHudSeparator(GameClient& client, Text& hud, string fontPath, RectangleSh
     
     ostringstream oss_HUD;
     oss_HUD << fontPath<<" " << hud.getCharacterSize() << " " << hud.getFillColor().toInteger() << " " << hud.getPosition().x << " " << hud.getPosition().y;
-    status = client.send((char*) oss_HUD.str().c_str());
+    status = client->send((char*) oss_HUD.str().c_str());
     if(status != OK)
     {
         cout <<endl<< "(SERVEUR)ERREUR d'envoi GraphDATA HUD vers client 1" << endl;
@@ -256,7 +235,7 @@ int sendHudSeparator(GameClient& client, Text& hud, string fontPath, RectangleSh
         oss_sepa << separators[i].getSize().x << " " << separators[i].getSize().y << " ";
         oss_sepa << separators[i].getPosition().x << " " << separators[i].getPosition().y << " ";
     }
-    status = client.send((char *)oss_sepa.str().c_str());
+    status = client->send((char *)oss_sepa.str().c_str());
     if (status != OK)
     {
         cout << endl<< "(SERVEUR)ERREUR d'envoi SEPARATOR vers client 1" << endl;
@@ -271,20 +250,20 @@ int sendHudSeparator(GameClient& client, Text& hud, string fontPath, RectangleSh
     return OK;
 }
 
-int AnalyseEvent(GameClient &client1, GameClient &client2, Bat &batC1, Bat &batC2)
+int AnalyseEvent(Bat &batC1, Bat &batC2)
 {
     char Data[1024];
     int status = OK;
 
     // Client 1
-    status = client1.receive(Data);
+    status = client1->receive(Data);
     if (status == OK)
     {
         cout << "(SERVEUR)Even du client 1 reçu" << endl;
         if (strcmp(Data, "STOP") == 0)
         {
             cout << "(SERVEUR)Fin de connexion demandée par client 1" << endl;
-            status = client2.send((char *)"STOP");
+            status = client2->send((char *)"STOP");
             if (status != OK)
             {
                 cout << "(SERVEUR)ERREUR d'envoi de message STOP au client 2" << endl;
@@ -327,14 +306,14 @@ int AnalyseEvent(GameClient &client1, GameClient &client2, Bat &batC1, Bat &batC
     }
 
     // Client 2
-    status = client2.receive(Data);
+    status = client2->receive(Data);
     if (status == OK)
     {
         cout << "(SERVEUR)Even du client 2 reçu" << endl;
         if (strcmp(Data, "STOP") == 0)
         {
             cout << "(SERVEUR)Fin de connexion demandée par client 2" << endl;
-            status = client1.send((char *)"STOP");
+            status = client1->send((char *)"STOP");
             if (status != OK)
             {
                 cout << "(SERVEUR)ERREUR d'envoi de message STOP au client 1" << endl;
@@ -419,7 +398,7 @@ void HandleBall(Ball &ball, Bat &batC1, Bat &batC2, int &scoreC1, int &scoreC2)
 }
 
 
-int SendInfoToClient(GameClient &client, Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2, bool isClient1)
+int SendInfoToClient(GameClient *client, Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2, bool isClient1)
 {
     ostringstream oss;
     if (isClient1)
@@ -438,7 +417,7 @@ int SendInfoToClient(GameClient &client, Ball &ball, Bat &batC1, Bat &batC2, int
     }
     oss << endl;
 
-    int status = client.send((char*)oss.str().c_str());
+    int status = client->send((char*)oss.str().c_str());
     if (status != OK)
     {
         cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client " << (isClient1 ? "1" : "2") << endl;
@@ -453,16 +432,15 @@ int SendInfoToClient(GameClient &client, Ball &ball, Bat &batC1, Bat &batC2, int
 }
 
 
-
-int SendAllInfoToClients(GameClient &client1, GameClient &client2, Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2)
+int SendAllInfoToClients(Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2)
 {
-    int status= SendInfoToClient(client1, ball, batC1, batC2, scoreC1, scoreC2, true);
+    int status= SendInfoToClient(client1,ball, batC1, batC2, scoreC1, scoreC2, true);
     if(status != OK)
     {
         cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 1" << endl;
         return status;
     }
-    status= SendInfoToClient(client2, ball, batC1, batC2, scoreC1, scoreC2, false);
+    status= SendInfoToClient(client2,ball, batC1, batC2, scoreC1, scoreC2, false);
     if(status != OK)
     {
         cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 2" << endl;
@@ -470,12 +448,12 @@ int SendAllInfoToClients(GameClient &client1, GameClient &client2, Ball &ball, B
     }
 }
 
-int stopConnection(GameClient &client1, GameClient &client2, string Data,bool isClient1)
+int stopConnection(string Data,bool isClient1)
 {
     if (isClient1)
     {
         cout << "(SERVEUR)Fin de connexion demandée par client 1" << endl;
-        int status = client2.send((char*)Data.c_str());
+        int status = client2->send((char*)Data.c_str());
         if (status != OK)
         {
             cout << "(SERVEUR)ERREUR d'envoi de message STOP au client 2" << endl;
@@ -488,7 +466,7 @@ int stopConnection(GameClient &client1, GameClient &client2, string Data,bool is
     else 
     {
         cout << "(SERVEUR)Fin de connexion demandée par client 2" << endl;
-        int status = client1.send((char*)Data.c_str());
+        int status = client1->send((char*)Data.c_str());
         if (status != OK)
         {
             cout << "(SERVEUR)ERREUR d'envoi de message STOP au client 1" << endl;
@@ -500,48 +478,4 @@ int stopConnection(GameClient &client1, GameClient &client2, string Data,bool is
     }
 }
 
-void *FctThreadReceive(void *setting)
-{
-    GameClient *client = (GameClient *)setting;
-    while (1)
-    {
-        pthread_mutex_lock(&mutexReceive);
-        while (!recvDataAvailable)
-        {
-            pthread_cond_wait(&condReceive, &mutexReceive);
-        }
 
-        threadStatus = client->receiveNonBlocking(receivedData, 3000);
-
-        if (threadStatus == TIMEOUT)
-        {
-            // Gérer le cas où le receive a expiré
-            continue;
-        }
-        else if (threadStatus != OK)
-        {
-            // Gérer l'erreur de receive
-            cout << "(CLIENT)ERREUR reception des données du serveur" << endl;
-            break;
-        }
-        else
-        {
-            // Gérer le cas où le receive a réussi
-            cout << "(CLIENT)Données reçues du serveur " << receivedData << endl;
-        }
-        recvDataAvailable=false;
-        pthread_mutex_unlock(&mutexReceive);
-    }
-
-    pthread_exit(NULL);
-}
-
-
-void signalReceiveData()
-{
-    pthread_mutex_lock(&mutexReceive);
-    recvDataAvailable = true;
-    pthread_mutex_unlock(&mutexReceive);
-    pthread_cond_signal(&condReceive);
-    
-}
