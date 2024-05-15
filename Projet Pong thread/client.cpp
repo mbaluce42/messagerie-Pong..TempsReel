@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 {
     if (argc < 3)
     {
-        cout << "Usage: " << argv[0] << " <server_address> <server_port> <sec_for_Sim_Lag>" << endl;
+        cout << "Usage: " << argv[0] << " <server_address> <server_port> <ms_for_Sim_Lag>" << endl;
         return -1;
     }
     char* ipAdresse = argv[1];
@@ -124,6 +124,8 @@ int main(int argc, char *argv[])
             else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active" << endl;}
             else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
         }
+
+
         status= sendEvent(focus);
         if(status != OK)
         {
@@ -144,7 +146,7 @@ int main(int argc, char *argv[])
         }
 
         cout<<"En cours de construction NEW du terrain"<<endl;
-
+        //reception des données du serveur (position des elements du terrain)
         string AllData;
         status= receiveData(AllData);
         if(status != OK)
@@ -399,10 +401,11 @@ void *FctThreadReceive(void *setting)
     {
         char Data[1024];
         int status = client->receiveNonBlocking(Data, 300);
-
+        
         struct timespec wait;
-        wait.tv_sec = forLag;
-        wait.tv_nsec = 0;
+        // Conversion des millisecondes en secondes et nanosecondes
+        wait.tv_sec = forLag / 1000;
+        wait.tv_nsec = (forLag % 1000) * 1000000;
         nanosleep(&wait, NULL);
 
         if (status == TIMEOUT)
@@ -416,7 +419,7 @@ void *FctThreadReceive(void *setting)
             }
             pthread_mutex_unlock(&mutexReceive);
 
-            continue;
+            //continue;
 
         }
         else if (status != OK)
@@ -438,6 +441,8 @@ void *FctThreadReceive(void *setting)
             pthread_cond_signal(&condReceive);
             pthread_mutex_unlock(&mutexReceive);
         }
+
+        
     }
 
     pthread_exit(NULL);

@@ -9,6 +9,8 @@
 #include <pthread.h>
 #include <queue>
 #include <SFML/Graphics.hpp>
+#include <time.h>
+#include <sys/time.h>
 
 using namespace std;
 
@@ -144,6 +146,9 @@ int main(int argc, char *argv[])
 
     while (start==true)
     {
+        struct timeval startTime, endTime;
+        gettimeofday(&startTime, NULL);
+
         cout << "(SERVEUR)En attente d'Even des clients ; 1 puis 2" << endl;
         status = AnalyseEvent(batC1, batC2);
         if (status != OK)
@@ -169,7 +174,16 @@ int main(int argc, char *argv[])
             return status;
         }
 
-        usleep(tickDuration);
+        gettimeofday(&endTime, NULL);
+        long elapsedTime = (endTime.tv_sec - startTime.tv_sec) * 1000000 + (endTime.tv_usec - startTime.tv_usec);
+        long sleepDuration = tickDuration - elapsedTime; // vrai tickrate = tickDuration - sleepDuration
+
+        if (sleepDuration > 0) 
+        {
+            usleep(sleepDuration);
+        }
+
+        //usleep(tickDuration);
 
     }// This is the end of the "while" loop
 
