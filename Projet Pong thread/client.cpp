@@ -528,33 +528,36 @@ void *FctThreadSend(void *setting)
             pthread_cond_wait(&condSend, &mutexSend);
         }
         data =String(sendData);
+        pthread_mutex_unlock(&mutexSend);
 
         cout << "(CLIENT threadSend)Prêt à envoyer : " << data << endl;
 
         int status = client->send((char *)data.c_str());
+        struct timespec wait;
+        // Conversion des millisecondes en secondes et nanosecondes
+        wait.tv_sec = forLag / 1000;
+        wait.tv_nsec = (forLag % 1000) * 1000000;
+        nanosleep(&wait, NULL);
 
         if (status != OK)
         {
             // Gérer l'erreur de send
             cout << "(CLIENT threadSend)ERREUR sending data: " << status << endl;
-            pthread_mutex_unlock(&mutexSend);
-            continue;
         }
         else
         {
             // Gérer le cas où le send a réussi
             
             cout << "(CLIENT)Message envoyé au serveur " << data << endl;
+            pthread_mutex_lock(&mutexSend);
             threadStatus=OK;
+            pthread_mutex_unlock(&mutexSend);
         }
+        pthread_mutex_lock(&mutexSend);
 
         sendDataAvailable = false;
-
-        pthread_mutex_unlock(&mutexSend);
-
-        // Mettre à jour le statut
-        pthread_mutex_lock(&mutexSend);
         threadStatus = status;
+
         pthread_mutex_unlock(&mutexSend);
     }
 }

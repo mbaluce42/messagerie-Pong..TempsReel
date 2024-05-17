@@ -143,11 +143,13 @@ int main(int argc, char *argv[])
     cout << "(SERVEUR)!!! Jeu commence !!!" << endl;
     ball.start();
     bool start = true;
+    
+    sf::Clock clock;
 
     while (start==true)
     {
-        struct timeval startTime, endTime;
-        gettimeofday(&startTime, NULL);
+        sf::Time elapsed = clock.restart(); // Restart the clock and return the elapsed time
+        long elapsedTime = elapsed.asMicroseconds();// Convert the time to microseconds
 
         cout << "(SERVEUR)En attente d'Even des clients ; 1 puis 2" << endl;
         status = AnalyseEvent(batC1, batC2);
@@ -174,16 +176,13 @@ int main(int argc, char *argv[])
             return status;
         }
 
-        gettimeofday(&endTime, NULL);
-        long elapsedTime = (endTime.tv_sec - startTime.tv_sec) * 1000000 + (endTime.tv_usec - startTime.tv_usec);
-        long sleepDuration = tickDuration - elapsedTime; // vrai tickrate = tickDuration - sleepDuration
-
-        if (sleepDuration > 0) 
+        // Contrôle du temps pour maintenir le taux de rafraîchissement
+        long sleepDuration = tickDuration - elapsedTime;
+    
+        if (sleepDuration > 0) // Si le temps de sommeil est positif
         {
-            usleep(sleepDuration);
+            sf::sleep(sf::microseconds(sleepDuration));// met prog en pause pour la duree restante pour atteindre le taux de rafraichissement
         }
-
-        //usleep(tickDuration);
 
     }// This is the end of the "while" loop
 
