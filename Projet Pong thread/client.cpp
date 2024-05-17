@@ -429,10 +429,11 @@ int stopConnection()
 
 void *FctThreadReceive(void *setting)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
     {
         char Data[1024];
-        int status = client->receiveNonBlocking(Data, 300);
+        int status = client->receiveNonBlocking(Data, 200);
 
         struct timespec wait;
         // Conversion des millisecondes en secondes et nanosecondes
@@ -516,6 +517,7 @@ int receiveData(string& data)
 
 void *FctThreadSend(void *setting)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
     {
         string data;

@@ -8,7 +8,7 @@ private:
 	Vector2f position;
 
 	RectangleShape batShape;
-	float batSpeed = 0.6f;
+	float batSpeed = 0.9f;
 
 public:
 	Bat(float startX, float startY);

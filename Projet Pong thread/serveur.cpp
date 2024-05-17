@@ -578,17 +578,18 @@ int stopConnection(string Data,bool isClient1)
 
 void *FctThreadReceive(void *setting)
 {
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
     {
         char Data[1024];
         int status;
 
         // Reception du client 1
-        status = client1->receiveNonBlocking(Data, 300);
+        status = client1->receiveNonBlocking(Data, 200);
         handleThreadReceiveStatus(status, Data, true);
 
         // Reception du client 2
-        status = client2->receiveNonBlocking(Data, 300);
+        status = client2->receiveNonBlocking(Data, 200);
         handleThreadReceiveStatus(status, Data, false);
     }
     pthread_exit(NULL);
