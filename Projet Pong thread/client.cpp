@@ -29,20 +29,28 @@ void *FctThreadReceive(void *setting);
 int receiveData(string& data);
 
 
+void *FctThreadSend(void *setting);
+void signalSendData(const string& data);
+
+
 pthread_t threadSend;
 pthread_t threadRecv;
 
 pthread_mutex_t mutexReceive = PTHREAD_MUTEX_INITIALIZER;
-
 pthread_cond_t condReceive = PTHREAD_COND_INITIALIZER;
 queue<string> receivedQueue; //fifo
+bool receiveDataAvailable=false;
 
+pthread_mutex_t mutexSend = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condSend = PTHREAD_COND_INITIALIZER;
+bool sendDataAvailable=false;
+string sendData;
+int threadStatus=OK;
 
 bool erreurRcv = false;
 pthread_mutex_t mutexErreurRcv = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condErreur = PTHREAD_COND_INITIALIZER;
 
-bool receiveDataAvailable=false;
 
 
 GameClient* client=new GameClient();
@@ -86,6 +94,10 @@ int main(int argc, char *argv[])
     if(res==0){cout<<endl<<"ThreadRecv " + to_string(threadRecv) + " cree avec succe"<<endl;}
     else{cout<<endl<<"ERREUR creation ThreadRecv"<<endl; return -1;}
 
+    res=pthread_create(&threadSend, NULL, FctThreadSend,NULL);
+    if(res==0){cout<<endl<<"ThreadSend " + to_string(threadSend) + " cree avec succe"<<endl;}
+    else{cout<<endl<<"ERREUR creation ThreadSend"<<endl; pthread_cancel(threadRecv); pthread_join(threadRecv, NULL); return -1;}
+
 
     cout << endl<<"(CLIENT)initialisation du terrain ......................" << endl;
 
@@ -95,8 +107,8 @@ int main(int argc, char *argv[])
     if(status != OK)
     {
         cout<<"(CLIENT)ERREUR initialisation du terrain"<<endl;
-            pthread_cancel(threadRecv);
-            pthread_join(threadRecv, NULL);
+        pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
+        pthread_cancel(threadSend); pthread_join(threadSend, NULL);
         return status;
     }
     else
@@ -116,10 +128,20 @@ int main(int argc, char *argv[])
             if (event.type == Event::Closed)
             {
                 status=stopConnection();
-                if(status != OK){ pthread_cancel(threadRecv);
-            pthread_join(threadRecv, NULL);return status; }
-                else{window.close(); cout<<endl<<"(CLIENT)Fenetre fermée" << endl; pthread_cancel(threadRecv);
-            pthread_join(threadRecv, NULL); return 0; }
+                if(status != OK)
+                {
+                    pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
+                    pthread_cancel(threadSend); pthread_join(threadSend, NULL);    
+                    return status; 
+                }
+                else
+                {
+                    window.close(); 
+                    cout<<endl<<"(CLIENT)Fenetre fermée" << endl; 
+                    pthread_cancel(threadRecv); pthread_join(threadRecv, NULL); 
+                    pthread_cancel(threadSend); pthread_join(threadSend, NULL);
+                    return 0; 
+                }
             }
             else if(event.type == sf::Event::GainedFocus) {focus=true; cout<<endl<<"(CLIENT)Fenetre active" << endl;}
             else if(event.type == sf::Event::LostFocus) {focus=false; cout<<endl<<"(CLIENT)Fenetre non active" << endl;}
@@ -136,8 +158,8 @@ int main(int argc, char *argv[])
                 break;
             }
             cout<<"(CLIENT)ERREUR envoi des evenements au serveur"<<endl;
-            pthread_cancel(threadRecv);
-            pthread_join(threadRecv, NULL);
+            pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
+            pthread_cancel(threadSend); pthread_join(threadSend, NULL);
             return status;
         }
         else
@@ -153,8 +175,8 @@ int main(int argc, char *argv[])
         {
             cout<<"(CLIENT)ERREUR reception des données du serveur"<<endl;
             cout<<endl<< AllData << endl;
-            pthread_cancel(threadRecv);
-            pthread_join(threadRecv, NULL);
+            pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
+            pthread_cancel(threadSend); pthread_join(threadSend, NULL);
             return status;
         }
 
@@ -165,7 +187,6 @@ int main(int argc, char *argv[])
             break;
         }
         
-        
         cout<<"(CLIENT)Données FINAL reçues du serveur "<<endl;
         finalDataDeserialization(AllData, ball, batC1, batC2, ss);
 
@@ -174,8 +195,8 @@ int main(int argc, char *argv[])
         cout<<endl<<"!!! (CLIENT) terrain construit avec succes !!!"<<endl;
     }
 
-    pthread_cancel(threadRecv);
-    pthread_join(threadRecv, NULL);
+    pthread_cancel(threadRecv);pthread_join(threadRecv, NULL);
+    pthread_cancel(threadSend); pthread_join(threadSend, NULL);
 
     return 0;
 }
@@ -183,8 +204,10 @@ int main(int argc, char *argv[])
 
 int initHud(Text& hud, Font& font)
 {
-    int status= client->send( (char*)("HUD & SEPARATOR") );
-    if(status != OK)
+    int status;
+    signalSendData("HUD & SEPARATOR");
+    status= threadStatus;
+    if(status!= OK)
     {
         cout<<"(CLIENT)ERREUR envoi de la commande HUD & SEPARATOR au serveur"<<endl;
         return status;
@@ -280,7 +303,9 @@ int sendEvent(bool focus)
         }
         if (Keyboard::isKeyPressed(Keyboard::Up))
         {
-            status = client->send((char *)("Up"));
+            //status = client->send((char *)("Up"));
+            signalSendData("Up");
+            status= threadStatus;
             if (status != OK)
             {
                 cout << "(CLIENT)ERREUR envoi de la position du bat au serveur (Up)" << endl;
@@ -293,7 +318,9 @@ int sendEvent(bool focus)
         }
         else if (Keyboard::isKeyPressed(Keyboard::Down))
         {
-            status = client->send((char *)("Down"));
+            //status = client->send((char *)("Down"));
+            signalSendData("Down");
+            status= threadStatus;
             if (status != OK)
             {
                 cout << "(CLIENT)ERREUR envoi de la position du bat au serveur (Down)" << endl;
@@ -308,7 +335,9 @@ int sendEvent(bool focus)
         {
             cout << endl
                  << "(CLIENT) fenetre active mais AUCUN MOUV" << endl;
-            status = client->send((char *)("NOT"));
+            //status = client->send((char *)("NOT"));
+            signalSendData("NOT");
+            status= threadStatus;
             if (status != OK)
             {
                 cout << "(CLIENT)ERREUR envoi de la position du enemyBat au serveur (NOT)" << endl;
@@ -322,9 +351,10 @@ int sendEvent(bool focus)
     }
     else
     {
-        cout << endl
-             << "(CLIENT)Fenetre non active" << endl;
-        status = client->send((char *)("NOT"));
+        cout << endl<< "(CLIENT)Fenetre non active" << endl;
+        //status = client->send((char *)("NOT"));
+        signalSendData("NOT");
+        status= threadStatus;
         if (status != OK)
         {
             cout << "(CLIENT)ERREUR envoi de la position du enemyBat au serveur (NOT)" << endl;
@@ -380,7 +410,9 @@ void afficheTerrain(Text &hud, RectangleShape (&separators)[16], RenderWindow &w
 }
 int stopConnection()
 {
-    int status= client->send( (char*)("STOP"));
+    //int status= client->send( (char*)("STOP"));
+    signalSendData("STOP");
+    int status= threadStatus;
     if(status != OK)
     {
         cout<<"(CLIENT)ERREUR envoi AU REVOIR au serveur (STOP)"<<endl;
@@ -401,7 +433,7 @@ void *FctThreadReceive(void *setting)
     {
         char Data[1024];
         int status = client->receiveNonBlocking(Data, 300);
-        
+
         struct timespec wait;
         // Conversion des millisecondes en secondes et nanosecondes
         wait.tv_sec = forLag / 1000;
@@ -479,4 +511,58 @@ int receiveData(string& data)
     receiveDataAvailable = false;
     pthread_mutex_unlock(&mutexReceive);
     return OK;
+}
+
+
+void *FctThreadSend(void *setting)
+{
+    while (1)
+    {
+        string data;
+        pthread_mutex_lock(&mutexSend);
+        
+        while (!sendDataAvailable)
+        {
+            pthread_cond_wait(&condSend, &mutexSend);
+        }
+        data =String(sendData);
+
+        cout << "(CLIENT threadSend)Prêt à envoyer : " << data << endl;
+
+        int status = client->send((char *)data.c_str());
+
+        if (status != OK)
+        {
+            // Gérer l'erreur de send
+            cout << "(CLIENT threadSend)ERREUR sending data: " << status << endl;
+            pthread_mutex_unlock(&mutexSend);
+            continue;
+        }
+        else
+        {
+            // Gérer le cas où le send a réussi
+            
+            cout << "(CLIENT)Message envoyé au serveur " << data << endl;
+            threadStatus=OK;
+        }
+
+        sendDataAvailable = false;
+
+        pthread_mutex_unlock(&mutexSend);
+
+        // Mettre à jour le statut
+        pthread_mutex_lock(&mutexSend);
+        threadStatus = status;
+        pthread_mutex_unlock(&mutexSend);
+    }
+}
+
+
+void signalSendData(const string& data)
+{
+    pthread_mutex_lock(&mutexSend);
+    sendData = String(data);
+    sendDataAvailable = true;// donnees dispo pour send serveur 
+    pthread_cond_signal(&condSend);
+    pthread_mutex_unlock(&mutexSend);
 }
