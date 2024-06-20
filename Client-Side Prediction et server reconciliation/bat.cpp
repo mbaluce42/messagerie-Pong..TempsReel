@@ -27,7 +27,7 @@ void Bat::moveDown()
  
 void Bat::moveUp()
 {
-    position.y -= batSpeed;
+    position.y -= batSpeed ;
 }
  
 void Bat::update()

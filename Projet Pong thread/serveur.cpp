@@ -37,6 +37,11 @@ void handleThreadReceiveStatus(int status, char *Data, bool isClient1);
 int receiveDataClient1(string& data);
 int receiveDataClient2(string& data);
 
+// Fonction pour calculer la différence de temps en millisecondes
+float time_diff(struct timespec *start, struct timespec *end) {
+    return (end->tv_sec - start->tv_sec) * 1000.0 + (end->tv_nsec - start->tv_nsec) / 1000000.0;
+}
+
 GameClient* client1=new GameClient();
 GameClient* client2=new GameClient();
 
@@ -124,9 +129,11 @@ int main(int argc, char *argv[])
 
         y_sepa+=64;
     }
+    struct timespec debut;
+    struct timespec fin;
 
     const int tickRate = 64; // Taux de rafraîchissement en Hz
-    const int tickDuration = 1000000 / tickRate; // Durée d'une boucle en microsecondes
+    const float tickDuration = 1000.f / tickRate; // Durée d'une boucle en microsecondes
 
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
@@ -148,8 +155,7 @@ int main(int argc, char *argv[])
 
     while (start==true)
     {
-        sf::Time elapsed = clock.restart(); // Restart the clock and return the elapsed time
-        long elapsedTime = elapsed.asMicroseconds();// Convert the time to microseconds
+        clock_gettime(CLOCK_REALTIME, &debut);
 
         cout << "(SERVEUR)En attente d'Even des clients ; 1 puis 2" << endl;
         status = AnalyseEvent(batC1, batC2);
@@ -176,12 +182,12 @@ int main(int argc, char *argv[])
             return status;
         }
 
-        // Contrôle du temps pour maintenir le taux de rafraîchissement
-        long sleepDuration = tickDuration - elapsedTime;
-    
-        if (sleepDuration > 0) // Si le temps de sommeil est positif
-        {
-            sf::sleep(sf::microseconds(sleepDuration));// met prog en pause pour la duree restante pour atteindre le taux de rafraichissement
+        clock_gettime(CLOCK_REALTIME, &fin);
+        float diff = time_diff(&debut, &fin); // Temps écoulé en millisecondes
+
+        cout<<"(SERVEUR)Temps écoulé(ms) : "<<diff<<endl;
+        if (diff < tickDuration) { // Si le temps écoulé est inférieur à la durée d'une boucle
+            sf::sleep(sf::milliseconds(tickDuration - diff)); // Attendre le temps restant
         }
 
     }// This is the end of the "while" loop

@@ -56,8 +56,6 @@ pthread_cond_t condErreur = PTHREAD_COND_INITIALIZER;
 GameClient* client=new GameClient();
 int forLag=0;
 
-queue<String> evenPlayer;
-
 int main(int argc, char *argv[])
 {
     if (argc < 3)
@@ -335,7 +333,8 @@ int sendEvent(bool focus)
         }
         else
         {
-            cout << endl<< "(CLIENT) fenetre active mais AUCUN MOUV" << endl;
+            cout << endl
+                 << "(CLIENT) fenetre active mais AUCUN MOUV" << endl;
             //status = client->send((char *)("NOT"));
             signalSendData("NOT");
             status= threadStatus;
@@ -349,7 +348,6 @@ int sendEvent(bool focus)
                 cout << "(CLIENT)Message envoyé au serveur (NOT) succes " << endl;
             }
         }
-
     }
     else
     {
