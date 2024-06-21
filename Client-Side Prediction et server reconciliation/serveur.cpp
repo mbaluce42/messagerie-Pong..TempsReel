@@ -54,7 +54,7 @@ bool receiveDataAvailableClient1=false;
 
 pthread_mutex_t mutexReceiveClient2 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condReceiveClient2 = PTHREAD_COND_INITIALIZER;
-queue<string> receivedQueueClient2; //fifoµ
+queue<string> receivedQueueClient2; //fifo
 bool receiveDataAvailableClient2=false;
 
 
@@ -62,6 +62,15 @@ bool receiveDataAvailableClient2=false;
 bool erreurRcv = false;
 pthread_mutex_t mutexErreurRcv = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condErreur = PTHREAD_COND_INITIALIZER;
+
+struct Input
+{
+    string action;
+    long sequenceNumber;
+};
+
+Input lastInput; // Dernière entrée reçue du client
+long sequenceNumber = 0; // Numéro de séquence que le serveur doit traiter et renvoyer
 
 
 int main(int argc, char *argv[])
@@ -133,7 +142,7 @@ int main(int argc, char *argv[])
     struct timespec fin;
 
     const int tickRate = 64; // Taux de rafraîchissement en Hz
-    const float tickDuration = 1000.f / tickRate; // Durée d'une boucle en microsecondes
+    const float tickDuration = 10000.f / tickRate; // Durée d'une boucle en microsecondes
 
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
@@ -155,6 +164,7 @@ int main(int argc, char *argv[])
 
     while (start==true)
     {
+        sequenceNumber++;
         clock_gettime(CLOCK_REALTIME, &debut);
 
         cout << "(SERVEUR)En attente d'Even des clients ; 1 puis 2" << endl;
@@ -357,6 +367,7 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
 {
     string Data;
     int status = OK;
+    istringstream iss;
 
     // Client 1
     status = receiveDataClient1(Data);
@@ -378,8 +389,10 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
         }
 
         // Analyser les données du client 1 (mouvement bat)
-        cout << "Mouvement bat : " << Data << endl;
-        if (Data == "Up")
+        cout << "(SERVEUR) Mouvement bat + sequenceNumber " << Data << endl;
+        iss= istringstream(Data);
+        iss >> lastInput.action >> lastInput.sequenceNumber;
+        if (lastInput.action == "Up")
         {
             if (batC1.getPosition().top > 0)
             {
@@ -387,7 +400,7 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
                 batC1.moveUp();
             }
         }
-        else if (Data == "Down")
+        else if (lastInput.action == "Down")
         {
             if (batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
             {
@@ -426,9 +439,12 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
             return 99;
         }
 
+
         // Analyser les données du client 2 (²mouvement bat)
-        cout << "Mouvement bat : " << Data<< endl;
-        if (Data == "Up")
+        iss= istringstream(Data);
+        iss >> lastInput.action >> lastInput.sequenceNumber;
+        cout << "(SERVEUR) Mouvement bat + sequenceNumber : " << Data<< endl;
+        if (lastInput.action == "Up")
         {
             if (batC2.getPosition().top > 0)
             {
@@ -436,7 +452,7 @@ int AnalyseEvent(Bat &batC1, Bat &batC2)
                 batC2.moveUp();
             }
         }
-        else if (Data == "Down")
+        else if (lastInput.action == "Down")
         {
             if (batC2.getPosition().top < windowHeight - batC2.getShape().getSize().y)
             {
@@ -507,14 +523,16 @@ int SendInfoToClient(GameClient *client, Ball &ball, Bat &batC1, Bat &batC2, int
         oss << ball.getPosition().left << " " << ball.getPosition().top << " ";
         oss << scoreC1 << " " << scoreC2 << " ";
         oss << batC1.getPosition().left << " " << batC1.getPosition().top << " ";
-        oss << batC2.getPosition().left << " " << batC2.getPosition().top;
+        oss << batC2.getPosition().left << " " << batC2.getPosition().top <<" ";
+        oss << sequenceNumber;
     }
     else
     {
         oss << (windowWidth - ball.getPosition().left - ball.getShape().getSize().x) << " " << ball.getPosition().top << " ";
         oss << scoreC2 << " " << scoreC1 << " ";
         oss << (windowWidth - batC2.getPosition().left - batC2.getShape().getSize().x) << " " << batC2.getPosition().top << " ";
-        oss << (windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x) << " " << batC1.getPosition().top;
+        oss << (windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x) << " " << batC1.getPosition().top <<" ";
+        oss << sequenceNumber;
     }
     oss << endl;
 

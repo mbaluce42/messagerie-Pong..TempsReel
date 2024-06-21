@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
     struct timespec fin;
 
     const int tickRate = 64; // Taux de rafraîchissement en Hz
-    const float tickDuration = 1000.f / tickRate; // Durée d'une boucle en microsecondes
+    const float tickDuration = 10000.f / tickRate; // Durée d'une boucle en microsecondes
 
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;

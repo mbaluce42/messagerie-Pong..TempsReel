@@ -429,16 +429,18 @@ int stopConnection()
 
 void *FctThreadReceive(void *setting)
 {
+    struct timespec wait;
+    // Conversion des millisecondes en secondes et nanosecondes
+    wait.tv_sec = forLag / 1000;
+    wait.tv_nsec = (forLag % 1000) * 1000000;
+
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
     {
+        nanosleep(&wait, NULL);
         char Data[1024];
         int status = client->receiveNonBlocking(Data, 200);
 
-        struct timespec wait;
-        // Conversion des millisecondes en secondes et nanosecondes
-        wait.tv_sec = forLag / 1000;
-        wait.tv_nsec = (forLag % 1000) * 1000000;
         nanosleep(&wait, NULL);
 
         if (status == TIMEOUT)
