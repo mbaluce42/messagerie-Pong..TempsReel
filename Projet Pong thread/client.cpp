@@ -54,7 +54,7 @@ pthread_cond_t condErreur = PTHREAD_COND_INITIALIZER;
 
 
 GameClient* client=new GameClient();
-int forLag=0;
+int Lag_ms=0;
 
 int main(int argc, char *argv[])
 {
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     }
     char* ipAdresse = argv[1];
     int port = atoi(argv[2]);
-    forLag = atoi(argv[3]);
+    Lag_ms = atoi(argv[3]);
 
 
     //client va se connecter au serveur
@@ -431,8 +431,8 @@ void *FctThreadReceive(void *setting)
 {
     struct timespec wait;
     // Conversion des millisecondes en secondes et nanosecondes
-    wait.tv_sec = forLag / 1000;
-    wait.tv_nsec = (forLag % 1000) * 1000000;
+    wait.tv_sec = /*0*/Lag_ms / 1000;
+    wait.tv_nsec = (Lag_ms % 1000) * 1000000/*Lag_ms* 1000000*/;
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
@@ -519,9 +519,15 @@ int receiveData(string& data)
 
 void *FctThreadSend(void *setting)
 {
+    struct timespec wait;
+    // Conversion des millisecondes en secondes et nanosecondes
+    wait.tv_sec = /*0*/Lag_ms / 1000;
+    wait.tv_nsec = (Lag_ms % 1000) * 1000000/*Lag_ms* 1000000*/;
+
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
     {
+        nanosleep(&wait, NULL);
         string data;
         pthread_mutex_lock(&mutexSend);
         
@@ -534,7 +540,8 @@ void *FctThreadSend(void *setting)
         cout << "(CLIENT threadSend)Prêt à envoyer : " << data << endl;
 
         int status = client->send((char *)data.c_str());
-
+        
+        nanosleep(&wait, NULL);
         if (status != OK)
         {
             // Gérer l'erreur de send

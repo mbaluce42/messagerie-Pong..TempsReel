@@ -197,7 +197,11 @@ int main(int argc, char *argv[])
 
         cout<<"(SERVEUR)Temps écoulé(ms) : "<<diff<<endl;
         if (diff < tickDuration) { // Si le temps écoulé est inférieur à la durée d'une boucle
-            sf::sleep(sf::milliseconds(tickDuration - diff)); // Attendre le temps restant
+            //sf::sleep(sf::milliseconds(tickDuration - diff)); // Attendre le temps restant
+            struct timespec ts;
+            ts.tv_sec = 0;
+            ts.tv_nsec = (tickDuration - diff) * 1000000; // Convertir le temps restant en nanosecondes
+            nanosleep(&ts, NULL); // Attendre le temps restant
         }
 
     }// This is the end of the "while" loop

@@ -208,7 +208,6 @@ int main(int argc, char *argv[])
         {
             cout<<"(CLIENT)Reconciliation du serveur"<<endl;
             cout<<endl<<"(CLIENT)Repositionnement des elements du terrain"<<endl;
-            HandleBall(ball, batC1, batC2, scoreC1, scoreC2);
 
             afficheTerrain(hud, separators, window, ss, ball, batC1, batC2);
             cout<<endl<<"!!! (CLIENT) terrain construit avec succes !!!"<<endl;
@@ -216,7 +215,7 @@ int main(int argc, char *argv[])
         else
         {
             cout<<"(CLIENT)Reconciliation du serveur confirmée"<<endl;
-            cout<<"(CLIENT) pas besoin de repositionner les elements du terrain"<<endl;
+            afficheTerrain(hud, separators, window, ss, ball, batC1, batC2);
         }
         inputHistory.pop();
 
@@ -658,9 +657,15 @@ int receiveData(string& data)
 
 void *FctThreadSend(void *setting)
 {
+    struct timespec wait;
+    // Conversion des millisecondes en secondes et nanosecondes
+    wait.tv_sec = forLag / 1000;
+    wait.tv_nsec = (forLag % 1000) * 1000000;
+
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
     {
+        nanosleep(&wait, NULL);
         string data;
         pthread_mutex_lock(&mutexSend);
         
@@ -673,6 +678,7 @@ void *FctThreadSend(void *setting)
         cout << "(CLIENT threadSend)Prêt à envoyer : " << data << endl;
 
         int status = client->send((char *)data.c_str());
+        nanosleep(&wait, NULL);
 
         if (status != OK)
         {
