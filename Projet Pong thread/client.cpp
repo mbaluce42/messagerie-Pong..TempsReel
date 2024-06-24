@@ -78,8 +78,9 @@ int main(int argc, char *argv[])
 
 
     cout << "(CLIENT)Connection au serveur REUSSI" << endl;
-    
-    RenderWindow window(VideoMode(windowWidth, windowHeight), "Pong Client");
+    string windowName("Pong Client");
+    windowName += " "+to_string(Lag_ms);    
+    RenderWindow window(VideoMode(windowWidth, windowHeight), windowName);
     Text hud;
     Font font;
     RectangleShape separators[16];

@@ -17,12 +17,6 @@ using namespace std;
 int windowWidth = 1024;
 int windowHeight = 768;
 
-struct Input
-{
-    string action;
-    long long timestamp_ms;
-};
-
 int initServer(GameServer& server);
 
 int initGame(Text& hud,string fontPath , RectangleShape (&separators)[16]);
@@ -31,8 +25,6 @@ int sendHudSeparator(Text& hud, string fontPath, RectangleShape (&separators)[16
 
 int AnalyseEvent(Bat &batC1, Bat &batC2);
 
-int HandleEven(string data, Bat &batC1, Bat &batC2, bool isClient1);
-
 void HandleBall(Ball &ball, Bat &batC1, Bat &batC2, int &scoreC1, int &scoreC2);
 
 int SendInfoToClient(GameClient *client, Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2, bool isClient1);
@@ -40,11 +32,10 @@ int SendInfoToClient(GameClient *client, Ball &ball, Bat &batC1, Bat &batC2, int
 int SendAllInfoToClients(Ball &ball, Bat &batC1, Bat &batC2, int scoreC1, int scoreC2);
 int stopConnection(string Data,bool isClient1);
 
-void *FctThreadReceiveClient1(void *setting);
-void *FctThreadReceiveClient2(void *setting);
+void *FctThreadReceive(void *setting);
 void handleThreadReceiveStatus(int status, char *Data, bool isClient1);
-int receiveDataClient1(Input& input);
-int receiveDataClient2(Input& input);
+int receiveDataClient1(string& data);
+int receiveDataClient2(string& data);
 
 // Fonction pour calculer la différence de temps en millisecondes
 float time_diff(struct timespec *start, struct timespec *end) {
@@ -54,31 +45,32 @@ float time_diff(struct timespec *start, struct timespec *end) {
 GameClient* client1=new GameClient();
 GameClient* client2=new GameClient();
 
-pthread_t threadRecv1;
-
-pthread_t threadRecv2;
-
+pthread_t threadRecv;
 
 pthread_mutex_t mutexReceiveClient1 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condReceiveClient1 = PTHREAD_COND_INITIALIZER;
-queue<Input> receivedQueueClient1; //fifo
+queue<string> receivedQueueClient1; //fifo
 bool receiveDataAvailableClient1=false;
-Input inputClient1;
 
 pthread_mutex_t mutexReceiveClient2 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condReceiveClient2 = PTHREAD_COND_INITIALIZER;
-queue<Input> receivedQueueClient2; //fifoµ
+queue<string> receivedQueueClient2; //fifo
 bool receiveDataAvailableClient2=false;
-Input inputClient2;
 
 
-bool erreurRcv1 = false;
-pthread_mutex_t mutexErreurRcv1 = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condErreur1 = PTHREAD_COND_INITIALIZER;
 
-bool erreurRcv2 = false;
-pthread_mutex_t mutexErreurRcv2 = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condErreur2 = PTHREAD_COND_INITIALIZER;
+bool erreurRcv = false;
+pthread_mutex_t mutexErreurRcv = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condErreur = PTHREAD_COND_INITIALIZER;
+
+struct Input
+{
+    string action;
+    long sequenceNumber;
+};
+
+Input lastInput; // Dernière entrée reçue du client
+long sequenceNumber = 0; // Numéro de séquence que le serveur doit traiter et renvoyer
 
 
 int main(int argc, char *argv[])
@@ -120,13 +112,9 @@ int main(int argc, char *argv[])
     }
     cout << "(SERVEUR)Client 2 connecté" << endl;
 
-    int res1=pthread_create(&threadRecv1, NULL, FctThreadReceiveClient1,NULL);
-    if(res1==0){cout<<endl<<"ThreadRecv1 " + to_string(threadRecv1) + " cree avec succe"<<endl;}
-    else{cout<<endl<<"ERREUR creation ThreadRecv1"<<endl; return -1;}
-
-    int res2=pthread_create(&threadRecv2, NULL, FctThreadReceiveClient2,NULL);
-    if(res2==0){cout<<endl<<"ThreadRecv2 " + to_string(threadRecv2) + " cree avec succe"<<endl;}
-    else{cout<<endl<<"ERREUR creation ThreadRecv2"<<endl; return -1;}
+    int res=pthread_create(&threadRecv, NULL, FctThreadReceive,NULL);
+    if(res==0){cout<<endl<<"ThreadRecv " + to_string(threadRecv) + " cree avec succe"<<endl;}
+    else{cout<<endl<<"ERREUR creation ThreadRecv"<<endl; return -1;}
 
     Bat batC1 (0, windowHeight/2);
     Bat batC2(windowWidth-batC1.getShape().getSize().x, windowHeight/2);
@@ -154,7 +142,7 @@ int main(int argc, char *argv[])
     struct timespec fin;
 
     const int tickRate = 64; // Taux de rafraîchissement en Hz
-    const float tickDuration = 1100.f / tickRate; // Durée d'une boucle en microsecondes
+    const float tickDuration = 10000.f / tickRate; // Durée d'une boucle en microsecondes
 
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
@@ -163,7 +151,7 @@ int main(int argc, char *argv[])
     if(status != OK)
     {
         cout << "(SERVEUR)ERREUR d'initialisation du jeu" << endl;
-        pthread_cancel(threadRecv1); pthread_join(threadRecv1, NULL); pthread_cancel(threadRecv2); pthread_join(threadRecv2, NULL);
+        pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
         return status;
     }
 
@@ -176,6 +164,7 @@ int main(int argc, char *argv[])
 
     while (start==true)
     {
+        sequenceNumber++;
         clock_gettime(CLOCK_REALTIME, &debut);
 
         cout << "(SERVEUR)En attente d'Even des clients ; 1 puis 2" << endl;
@@ -189,51 +178,18 @@ int main(int argc, char *argv[])
             }
             
             cout << "(SERVEUR)ERREUR d'analyse des Evenements" << endl;
-            pthread_cancel(threadRecv1); pthread_join(threadRecv1, NULL); pthread_cancel(threadRecv2); pthread_join(threadRecv2, NULL);
+            pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
             return status;
         }
 
         HandleBall(ball, batC1, batC2, scoreC1, scoreC2);
         //send all info to clients
-
-        if(inputClient1.timestamp_ms <= inputClient2.timestamp_ms)
+        status= SendAllInfoToClients(ball, batC1, batC2, scoreC1, scoreC2);
+        if(status != OK)
         {
-            cout << "(SERVEUR)Faut envoyer la MAJ au client 1 en premier" << endl;
-            int status= SendInfoToClient(client1,ball, batC1, batC2, scoreC1, scoreC2, true);
-            if(status != OK)
-            {
-                cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 1" << endl;
-                pthread_cancel(threadRecv1); pthread_join(threadRecv1, NULL); pthread_cancel(threadRecv2); pthread_join(threadRecv2, NULL);
-                return status;
-            }
-            cout<<"(SERVEUR) au tour du client 2"<<endl;
-            status= SendInfoToClient(client2,ball, batC1, batC2, scoreC1, scoreC2, false);
-            if(status != OK)
-            {
-                cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 2" << endl;
-                pthread_cancel(threadRecv1); pthread_join(threadRecv1, NULL); pthread_cancel(threadRecv2); pthread_join(threadRecv2, NULL);
-                return status;
-            }
-        }
-        else
-        {
-            cout << "(SERVEUR)Faut envoyer la MAJ au client 2 en premier" << endl;
-            int status= SendInfoToClient(client2,ball, batC1, batC2, scoreC1, scoreC2, false);
-            if(status != OK)
-            {
-                cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 2" << endl;
-                pthread_cancel(threadRecv1); pthread_join(threadRecv1, NULL); pthread_cancel(threadRecv2); pthread_join(threadRecv2, NULL);
-                return status;
-            }
-            cout<<"(SERVEUR) au tour du client 1"<<endl;
-            status= SendInfoToClient(client1,ball, batC1, batC2, scoreC1, scoreC2, true);
-            if(status != OK)
-            {
-                cout << "(SERVEUR)ERREUR d'envoi position ball et bats vers client 1" << endl;
-                pthread_cancel(threadRecv1); pthread_join(threadRecv1, NULL); pthread_cancel(threadRecv2); pthread_join(threadRecv2, NULL);
-                return status;
-            }
-
+            cout << "(SERVEUR)ERREUR d'envoi des positions ball et bats aux clients" << endl;
+            pthread_cancel(threadRecv); pthread_join(threadRecv, NULL);
+            return status;
         }
 
         clock_gettime(CLOCK_REALTIME, &fin);
@@ -246,13 +202,12 @@ int main(int argc, char *argv[])
             ts.tv_sec = 0;
             ts.tv_nsec = (tickDuration - diff) * 1000000; // Convertir le temps restant en nanosecondes
             nanosleep(&ts, NULL); // Attendre le temps restant
-            cout<<endl<<endl<<endl<<endl<<"(SERVEUR)Attente de "<<(tickDuration - diff)<<" ms"<<endl;
-
         }
 
     }// This is the end of the "while" loop
 
-    pthread_cancel(threadRecv1); pthread_join(threadRecv1, NULL); pthread_cancel(threadRecv2); pthread_join(threadRecv2, NULL);
+    pthread_cancel(threadRecv);
+    pthread_join(threadRecv, NULL);
     return 0;
 }
 
@@ -296,48 +251,18 @@ int initServer(GameServer& server)
 int initGame(Text& hud,string fontPath , RectangleShape (&separators)[16])
 {
     int status;
-
-    status= receiveDataClient1(inputClient1);
+    status = sendHudSeparator(hud, fontPath, separators, true);
     if(status != OK)
     {
-        cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 1" << endl;
-        return status;
-    }
-    status= receiveDataClient2(inputClient2);
-    if(status != OK)
-    {
-        cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 2" << endl;
+        cout << "(SERVEUR)ERREUR d'initialisation de HUD & SEPARATOR pour client 1" << endl;
         return status;
     }
 
-    if(inputClient1.timestamp_ms <= inputClient2.timestamp_ms)
+    status = sendHudSeparator(hud, fontPath, separators, false);
+    if(status != OK)
     {
-        cout << "(SERVEUR)Client 1 a envoyé en premier la commande HUD & SEPARATOR" << endl;
-        status = sendHudSeparator(hud, fontPath, separators, true);
-        if(status != OK)
-        {
-            return status;
-        }
-
-        status = sendHudSeparator(hud, fontPath, separators, false);
-        if(status != OK)
-        {
-            return status;
-        }
-    }
-    else
-    {
-        cout << "(SERVEUR)Client 2 a envoyé en premier la commande HUD & SEPARATOR" << endl;
-        status = sendHudSeparator(hud, fontPath, separators, false);
-        if(status != OK)
-        {
-            return status;
-        }
-        status = sendHudSeparator(hud, fontPath, separators, true);
-        if(status != OK)
-        {
-            return status;
-        }
+        cout << "(SERVEUR)ERREUR d'initialisation de HUD & SEPARATOR pour client 2" << endl;
+        return status;
     }
 
     //je peux aussi envoyer les positions des bats et de la balle
@@ -348,7 +273,30 @@ int initGame(Text& hud,string fontPath , RectangleShape (&separators)[16])
 
 int sendHudSeparator(Text& hud, string fontPath, RectangleShape (&separators)[16],bool isClient1)
 {
+    string Data;
     int status=OK;
+    if(isClient1)
+    {
+        //send HUD & SEPARATOR to client 1
+        status=receiveDataClient1(Data);
+        if(status != OK)
+        {
+            cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 1" << endl;
+            return status;
+        }
+    }
+    else
+    {
+        //send HUD & SEPARATOR to client 2
+        status=receiveDataClient2(Data);
+        if(status != OK)
+        {
+            cout << "(SERVEUR)ERREUR de reception de la commande HUD & SEPARATOR du client 2" << endl;
+            return status;
+        }
+    }
+
+    cout << "(SERVEUR)Commande HUD & SEPARATOR reçu du client "<<((isClient1) ? "1" : "2") << endl;
 
     //serialisation et envoie de HUD & SEPARATOR au client
     ostringstream oss_HUD;
@@ -421,65 +369,16 @@ int sendHudSeparator(Text& hud, string fontPath, RectangleShape (&separators)[16
 
 int AnalyseEvent(Bat &batC1, Bat &batC2)
 {
+    string Data;
     int status = OK;
+    istringstream iss;
 
-    status= receiveDataClient1(inputClient1);
-    if(status != OK)
+    // Client 1
+    status = receiveDataClient1(Data);
+    if (status == OK)
     {
-        cout << "(SERVEUR)[CLIENT1] ERREUR de reception du mouvement du client" << endl;
-        return status;
-    }
-    status= receiveDataClient2(inputClient2);
-    if(status != OK)
-    {
-        cout << "(SERVEUR)[CLIENT1] ERREUR de reception du mouvement du client" << endl;
-        return status;
-    }
-
-    if(inputClient1.timestamp_ms <= inputClient2.timestamp_ms)
-    {
-        cout << "(SERVEUR)[CLIENT1] Client 1 a envoyé en premier sont intention de MOVE" << endl;
-        status = HandleEven(inputClient1.action,batC1,batC2,true);
-        if(status != OK)
-        {
-            return status;
-        }
-
-        cout<<"(SERVEUR)[CLIENT2] traitement de MOVE du client 2"<<endl;
-
-        status = HandleEven(inputClient2.action,batC1,batC2,false);
-        if(status != OK)
-        {
-            return status;
-        }
-    }
-    else
-    {
-        cout << "(SERVEUR)[CLIENT2] Client 2 a envoyé en premier sont intention de MOVE" << endl;
-        status = HandleEven(inputClient2.action,batC1,batC2,false);
-        if(status != OK)
-        {
-            return status;
-        }
-
-        cout<<"(SERVEUR)[CLIENT1] traitement de MOVE du client 1";
-
-        status = HandleEven(inputClient1.action,batC1,batC2,true);
-        if(status != OK)
-        {
-            return status;
-        }
-    }
-
-    return OK;
-}
-
-int HandleEven(string data, Bat &batC1, Bat &batC2, bool isClient1)
-{
-    int status = OK;
-    if (isClient1)
-    {
-        if (data == "STOP")
+        cout << "(SERVEUR)Even du client 1 reçu" << endl;
+        if (Data=="STOP")
         {
             cout << "(SERVEUR)Fin de connexion demandée par client 1" << endl;
             status = client2->send((char *)"STOP");
@@ -494,32 +393,43 @@ int HandleEven(string data, Bat &batC1, Bat &batC2, bool isClient1)
         }
 
         // Analyser les données du client 1 (mouvement bat)
-        cout << "Mouvement bat : " << data << endl;
-        if (data == "Up")
+        cout << "(SERVEUR) Mouvement bat + sequenceNumber " << Data << endl;
+        iss= istringstream(Data);
+        iss >> lastInput.action >> lastInput.sequenceNumber;
+        if (lastInput.action == "Up")
         {
             if (batC1.getPosition().top > 0)
             {
-                cout << endl<< "!! (SERVEUR)CLIENT 1 MOVE UP !!";
+                cout << endl << "!! (SERVEUR)CLIENT 1 MOVE UP !!";
                 batC1.moveUp();
             }
         }
-        else if (data == "Down")
+        else if (lastInput.action == "Down")
         {
             if (batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
             {
-                cout << endl<< "!! (SERVEUR)CLIENT 1 MOVE DOWN !!";
+                cout << endl << "!! (SERVEUR)CLIENT 1 MOVE DOWN !!";
                 batC1.moveDown();
             }
         }
-        else // movType == "NOT"
+        else//movType == "NOT"
         {
-            cout << endl<< "!! (SERVEUR)CLIENT 1 N'AS PAS MOVE !!" << endl;
-            cout << endl<< "!! (SERVEUR) conservation position bat !!" << endl;
+            cout << endl << "!! (SERVEUR)CLIENT 1 N'AS PAS MOVE !!" << endl;
+            cout << endl << "!! (SERVEUR) conservation position bat !!" << endl;
         }
     }
     else
     {
-        if (data == "STOP")
+        cout << "(SERVEUR)ERREUR de reception position bat client 1" << endl;
+        return status;
+    }
+
+    // Client 2
+    status = receiveDataClient2(Data);
+    if (status == OK)
+    {
+        cout << "(SERVEUR)Even du client 2 reçu" << endl;
+        if (Data=="STOP")
         {
             cout << "(SERVEUR)Fin de connexion demandée par client 2" << endl;
             status = client1->send((char *)"STOP");
@@ -533,32 +443,42 @@ int HandleEven(string data, Bat &batC1, Bat &batC2, bool isClient1)
             return 99;
         }
 
+
         // Analyser les données du client 2 (²mouvement bat)
-        cout << "Mouvement bat : " << data << endl;
-        if (data == "Up")
+        iss= istringstream(Data);
+        iss >> lastInput.action >> lastInput.sequenceNumber;
+        cout << "(SERVEUR) Mouvement bat + sequenceNumber : " << Data<< endl;
+        if (lastInput.action == "Up")
         {
             if (batC2.getPosition().top > 0)
             {
-                cout << endl<< "!! (SERVEUR)CLIENT 2 MOVE UP !!";
+                cout << endl << "!! (SERVEUR)CLIENT 2 MOVE UP !!";
                 batC2.moveUp();
             }
         }
-        else if (data == "Down")
+        else if (lastInput.action == "Down")
         {
             if (batC2.getPosition().top < windowHeight - batC2.getShape().getSize().y)
             {
-                cout << endl<< "!! (SERVEUR)CLIENT 2 MOVE DOWN !!";
+                cout << endl << "!! (SERVEUR)CLIENT 2 MOVE DOWN !!";
                 batC2.moveDown();
             }
         }
         else
         {
-            cout << endl<< "!! (SERVEUR)CLIENT 2 N'AS PAS MOVE !!" << endl;
-            cout << endl<< "!! (SERVEUR) conservation position bat !!" << endl;
+            cout << endl << "!! (SERVEUR)CLIENT 2 N'AS PAS MOVE !!" << endl;
+            cout << endl << "!! (SERVEUR) conservation position bat !!" << endl;
         }
     }
+    else
+    {
+        cout << "(SERVEUR)ERREUR de reception position bat client 2" << endl;
+        return status;
+    }
+
     return OK;
 }
+
 
 void HandleBall(Ball &ball, Bat &batC1, Bat &batC2, int &scoreC1, int &scoreC2)
 {
@@ -607,14 +527,16 @@ int SendInfoToClient(GameClient *client, Ball &ball, Bat &batC1, Bat &batC2, int
         oss << ball.getPosition().left << " " << ball.getPosition().top << " ";
         oss << scoreC1 << " " << scoreC2 << " ";
         oss << batC1.getPosition().left << " " << batC1.getPosition().top << " ";
-        oss << batC2.getPosition().left << " " << batC2.getPosition().top;
+        oss << batC2.getPosition().left << " " << batC2.getPosition().top <<" ";
+        oss << sequenceNumber;
     }
     else
     {
         oss << (windowWidth - ball.getPosition().left - ball.getShape().getSize().x) << " " << ball.getPosition().top << " ";
         oss << scoreC2 << " " << scoreC1 << " ";
         oss << (windowWidth - batC2.getPosition().left - batC2.getShape().getSize().x) << " " << batC2.getPosition().top << " ";
-        oss << (windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x) << " " << batC1.getPosition().top;
+        oss << (windowWidth - batC1.getPosition().left - batC1.getShape().getSize().x) << " " << batC1.getPosition().top <<" ";
+        oss << sequenceNumber;
     }
     oss << endl;
 
@@ -681,39 +603,27 @@ int stopConnection(string Data,bool isClient1)
 
 
 
-void *FctThreadReceiveClient1(void *setting)
+void *FctThreadReceive(void *setting)
 {
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
     {
-        char Data1[1024];
-        int status1;
+        char Data[1024];
+        int status;
 
         // Reception du client 1
-        status1 = client1->receiveNonBlocking(Data1, 100);
-        handleThreadReceiveStatus(status1, Data1, true);
-    }
-    pthread_exit(NULL);
-}
-
-void *FctThreadReceiveClient2(void *setting)
-{
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    while (1)
-    {
-        char Data2[1024];
-        int status2;
+        status = client1->receiveNonBlocking(Data, 200);
+        handleThreadReceiveStatus(status, Data, true);
 
         // Reception du client 2
-        status2 = client2->receiveNonBlocking(Data2, 100);
-        handleThreadReceiveStatus(status2, Data2, false);
+        status = client2->receiveNonBlocking(Data, 200);
+        handleThreadReceiveStatus(status, Data, false);
     }
     pthread_exit(NULL);
 }
 
 void handleThreadReceiveStatus(int status, char *Data, bool isClient1)
 {
-    struct timespec timestemp;
     if (isClient1)
     {
 
@@ -721,7 +631,7 @@ void handleThreadReceiveStatus(int status, char *Data, bool isClient1)
         {
             // cout<<endl<<"timeout = front queue="<<receivedQueue.front()<<endl;
             pthread_mutex_lock(&mutexReceiveClient1);
-            if (!receivedQueueClient1.empty())// un message est bloque dans la file d'attente
+            if (!receivedQueueClient1.empty())
             {
                 receiveDataAvailableClient1 = true;
                 pthread_cond_signal(&condReceiveClient1);
@@ -731,26 +641,19 @@ void handleThreadReceiveStatus(int status, char *Data, bool isClient1)
         }
         else if (status != OK)
         {
-            cout << "(CLIENT threadReceiveClient1)ERREUR reception des données du serveur" << endl;
-            pthread_mutex_lock(&mutexErreurRcv1);
-            erreurRcv1 = true;
-            pthread_cond_signal(&condErreur1);
-            pthread_mutex_unlock(&mutexErreurRcv1);
+            cout << "(CLIENT threadReceive)ERREUR reception des données du serveur" << endl;
+            pthread_mutex_lock(&mutexErreurRcv);
+            erreurRcv = true;
+            pthread_cond_signal(&condErreur);
+            pthread_mutex_unlock(&mutexErreurRcv);
             //break;
         }
         else
         {
-            clock_gettime(CLOCK_REALTIME, &timestemp);
-            cout << "(CLIENT threadReceiveClient1)Données reçues du serveur " << Data << endl;
+            cout << "(CLIENT threadReceive)Données reçues du serveur " << Data << endl;
             pthread_mutex_lock(&mutexReceiveClient1);
             string tmp(Data);
-            //convertion timestemp en microsecondes
-            long long microsec = timestemp.tv_sec * 1000000 + timestemp.tv_nsec / 1000;
-            Input input;
-            input.action = tmp;
-            input.timestamp_ms = microsec;
-
-            receivedQueueClient1.push(input);
+            receivedQueueClient1.push(tmp);
             receiveDataAvailableClient1 = true;
             pthread_cond_signal(&condReceiveClient1);
             pthread_mutex_unlock(&mutexReceiveClient1);
@@ -771,26 +674,19 @@ void handleThreadReceiveStatus(int status, char *Data, bool isClient1)
         }
         else if (status != OK)
         {
-            cout << "(CLIENT threadReceiveClient2)ERREUR reception des données du serveur" << endl;
-            pthread_mutex_lock(&mutexErreurRcv2);
-            erreurRcv2 = true;
-            pthread_cond_signal(&condErreur2);
-            pthread_mutex_unlock(&mutexErreurRcv2);
+            cout << "(CLIENT threadReceive)ERREUR reception des données du serveur" << endl;
+            pthread_mutex_lock(&mutexErreurRcv);
+            erreurRcv = true;
+            pthread_cond_signal(&condErreur);
+            pthread_mutex_unlock(&mutexErreurRcv);
            // break;
         }
         else
         {
-            clock_gettime(CLOCK_REALTIME, &timestemp);
-            cout << "(CLIENT threadReceiveClient2)Données reçues du serveur " << Data << endl;
+            cout << "(CLIENT threadReceive)Données reçues du serveur " << Data << endl;
             pthread_mutex_lock(&mutexReceiveClient2);
             string tmp(Data);
-            //convertion timestemp en microsecondes
-            long long microsec = timestemp.tv_sec * 1000000 + timestemp.tv_nsec / 1000;
-            Input input;
-            input.action = tmp;
-            input.timestamp_ms = microsec;
-
-            receivedQueueClient2.push(input);
+            receivedQueueClient2.push(tmp);
             receiveDataAvailableClient2 = true;
             pthread_cond_signal(&condReceiveClient2);
             pthread_mutex_unlock(&mutexReceiveClient2);
@@ -799,30 +695,30 @@ void handleThreadReceiveStatus(int status, char *Data, bool isClient1)
 }
 
 
-int receiveDataClient1(Input& input)
+int receiveDataClient1(string& data)
 {
     pthread_mutex_lock(&mutexReceiveClient1);
-    while (!receiveDataAvailableClient1 && !erreurRcv1) 
+    while (!receiveDataAvailableClient1 && !erreurRcv) 
     {
         pthread_cond_wait(&condReceiveClient1, &mutexReceiveClient1);
     }
 
-    if (erreurRcv1)
+    if (erreurRcv)
     {
         pthread_mutex_unlock(&mutexReceiveClient1);
-        cout<<endl<<"(SERVEUR)[CLIENT1] fct receiveDataClient1()) Erreur de Receive"<<endl;
+        cout<<endl<<"(CLIENT1) fct receiveData()) Erreur de Receive"<<endl;
         return ERROR;
     }
 
     if (!receivedQueueClient1.empty())
     {
-        input = receivedQueueClient1.front();
+        data =String( receivedQueueClient1.front() );
         receivedQueueClient1.pop();
-        cout << "(SERVEUR)[CLIENT1] fct receiveDataClient1()Données reçues du serveur: " << input.action << " + timestemp(ms): "<<input.timestamp_ms<< endl;
+        cout << "(CLIENT1) fct receiveData())Données reçues du serveur: " << data << endl;
     }
     else
     {
-        cout << "(SERVEUR)[CLIENT1] La file d'attente est vide, aucun traitenment a faire" << endl;
+        cout << "(CLIENT1) La file d'attente est vide" << endl;
         //return ERROR; // Ou un autre code d'erreur approprié
     }
 
@@ -831,30 +727,30 @@ int receiveDataClient1(Input& input)
     return OK;
 }
 
-int receiveDataClient2(Input& input)
+int receiveDataClient2(string& data)
 {
     pthread_mutex_lock(&mutexReceiveClient2);
-    while (!receiveDataAvailableClient2 && !erreurRcv2) 
+    while (!receiveDataAvailableClient2 && !erreurRcv) 
     {
         pthread_cond_wait(&condReceiveClient2, &mutexReceiveClient2);
     }
 
-    if (erreurRcv2)
+    if (erreurRcv)
     {
         pthread_mutex_unlock(&mutexReceiveClient2);
-        cout<<endl<<"(SERVEUR)[CLIENT2] fct receiveDataClient2() Erreur de Receive"<<endl;
+        cout<<endl<<"(CLIENT2) fct receiveData()) Erreur de Receive"<<endl;
         return ERROR;
     }
 
     if (!receivedQueueClient2.empty())
     {
-        input = receivedQueueClient2.front();
+        data =String( receivedQueueClient2.front() );
         receivedQueueClient2.pop();
-        cout << "(SERVEUR)[CLIENT2] fct receiveDataClient2() Données reçues du serveur: " << input.action << " + timestemp(ms): "<<input.timestamp_ms<< endl;
+        cout << "(CLIENT2) fct receiveData())Données reçues du serveur: " << data << endl;
     }
     else
     {
-        cout << "(SERVEUR)[CLIENT2] La file d'attente est vide, aucun traitenment a faire" << endl;
+        cout << "(CLIENT2) La file d'attente est vide" << endl;
         //return ERROR; // Ou un autre code d'erreur approprié
     }
 

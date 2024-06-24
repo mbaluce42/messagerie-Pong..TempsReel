@@ -16,13 +16,19 @@ int scoreC1 = 0;
 int scoreC2 = 0;
 int windowWidth = 1024;
 int windowHeight = 768;
+struct Input
+{
+    string action;
+    long sequenceNumber;
+    bool predictionStateResult;
+};
 
 int initHud(Text& hud, Font& font);
 int initSeparator(RectangleShape (&separators)[16]);
 int initTerrain(Text& hud, Font& font, RectangleShape (&separators)[16]);
 int sendEvent(bool focus, Ball& ball, Bat& batC1, Bat& batC2, Text& hud, RectangleShape (&separators)[16], RenderWindow& window, stringstream& ss);
-void predictionInput(string moveType,Ball& ball,Bat& batC1,Bat& batC2 , int& scoreC1, int& scoreC2, Text& hud, RectangleShape (&separators)[16], RenderWindow& window, stringstream& ss);
 void HandleBall(Ball &ball, Bat &batC1, Bat &batC2, int &scoreC1, int &scoreC2);
+void predictionInput(Input& input,Ball& ball,Bat& batC1,Bat& batC2 , int& scoreC1, int& scoreC2, Text& hud, RectangleShape (&separators)[16], RenderWindow& window, stringstream& ss);
 void finalDataDeserialization(string AllData, Ball& ball, Bat& batC1, Bat& batC2, stringstream& ss);
 void afficheTerrain(Text &hud, RectangleShape (&separators)[16], RenderWindow &window,stringstream& ss, Ball& ball, Bat& batC1, Bat& batC2);
 int stopConnection();
@@ -33,6 +39,7 @@ int receiveData(string& data);
 
 void *FctThreadSend(void *setting);
 void signalSendData(const string& data);
+
 
 
 pthread_t threadSend;
@@ -56,10 +63,13 @@ pthread_cond_t condErreur = PTHREAD_COND_INITIALIZER;
 
 
 GameClient* client=new GameClient();
-int Lag_ms=0;
+int forLag=0;
 
-bool isCorrectPrediction=false;
 
+
+queue<Input> inputHistory;
+long lastConfirmedServerSequenceNumber = 0; // Numéro de séquence du dernier état confirmé
+Input lastInput; // Dernière entrée envoyée au serveur
 int main(int argc, char *argv[])
 {
     if (argc < 3)
@@ -69,7 +79,7 @@ int main(int argc, char *argv[])
     }
     char* ipAdresse = argv[1];
     int port = atoi(argv[2]);
-    Lag_ms = atoi(argv[3]);
+    forLag = atoi(argv[3]);
 
 
     //client va se connecter au serveur
@@ -82,16 +92,15 @@ int main(int argc, char *argv[])
 
 
     cout << "(CLIENT)Connection au serveur REUSSI" << endl;
-    string windowName("Pong Client");
-    windowName += " "+to_string(Lag_ms);    
-    RenderWindow window(VideoMode(windowWidth, windowHeight), windowName);
+    
+    RenderWindow window(VideoMode(windowWidth, windowHeight), "Pong Client");
     Text hud;
     Font font;
     RectangleShape separators[16];
 
-    Ball ball(windowWidth / 2, windowHeight / 2);
-    Bat batC1(10, windowHeight / 2);
-    Bat batC2(windowWidth - 10, windowHeight / 2);
+    Bat batC1 (0, windowHeight/2);
+    Bat batC2(windowWidth-batC1.getShape().getSize().x, windowHeight/2);
+    Ball ball(windowWidth / 2, windowHeight/2);
     bool focus;
     stringstream ss;
 
@@ -123,7 +132,7 @@ int main(int argc, char *argv[])
 
     cout << "(CLIENT)Terrain initialisé" << endl;
 
-
+    ball.start();
     while (window.isOpen())
     {
         Event event;
@@ -194,17 +203,28 @@ int main(int argc, char *argv[])
         
         cout<<"(CLIENT)Données FINAL reçues du serveur "<<endl;
         finalDataDeserialization(AllData, ball, batC1, batC2, ss);
-        if(isCorrectPrediction)
+
+        if(lastInput.predictionStateResult==false)
         {
-            cout<<"(CLIENT)Pas besoin de reafficher le terrain car prediction correct du client"<<endl;
+            cout<<"(CLIENT)Reconciliation du serveur"<<endl;
+            cout<<endl<<"(CLIENT)Repositionnement des elements du terrain"<<endl;
+
+            afficheTerrain(hud, separators, window, ss, ball, batC1, batC2);
+            cout<<endl<<"!!! (CLIENT) terrain construit avec succes !!!"<<endl;
         }
         else
         {
-            cout<<"(CLIENT)Affichage du terrain corrigé"<<endl;
+            cout<<"(CLIENT)Reconciliation du serveur confirmée"<<endl;
             afficheTerrain(hud, separators, window, ss, ball, batC1, batC2);
         }
+        inputHistory.pop();
 
-        cout<<endl<<"!!! (CLIENT) terrain construit avec succes !!!"<<endl;
+        lastInput.action="";
+        lastInput.sequenceNumber=0;
+        lastInput.predictionStateResult=false;
+
+        //HandleBall(ball, batC1, batC2, scoreC1, scoreC2);
+
     }
 
     pthread_cancel(threadRecv);pthread_join(threadRecv, NULL);
@@ -305,6 +325,7 @@ int initTerrain(Text& hud, Font& font, RectangleShape (&separators)[16])
 int sendEvent(bool focus, Ball& ball, Bat& batC1, Bat& batC2, Text& hud, RectangleShape (&separators)[16], RenderWindow& window, stringstream& ss)
 {
     int status;
+    ostringstream oss;
     if (focus)
     {
         if (Keyboard::isKeyPressed(sf::Keyboard::Escape))
@@ -314,9 +335,11 @@ int sendEvent(bool focus, Ball& ball, Bat& batC1, Bat& batC2, Text& hud, Rectang
             else{return 99;}
         }
         if (Keyboard::isKeyPressed(Keyboard::Up))
-        { 
-            predictionInput("Up",ball,batC1,batC2,scoreC1,scoreC2,hud,separators,window,ss);
-            signalSendData("Up");
+        {
+            lastInput.action = "Up";
+            predictionInput(lastInput, ball, batC1, batC2, scoreC1, scoreC2, hud, separators, window, ss);
+            oss << lastInput.action << " " << lastInput.sequenceNumber; //sequenceNumber est incrementé dans predictionInput
+            signalSendData(oss.str());
             status= threadStatus;
             if (status != OK)
             {
@@ -330,8 +353,10 @@ int sendEvent(bool focus, Ball& ball, Bat& batC1, Bat& batC2, Text& hud, Rectang
         }
         else if (Keyboard::isKeyPressed(Keyboard::Down))
         {
-            predictionInput("Down",ball,batC1,batC2,scoreC1,scoreC2,hud,separators,window,ss);
-            signalSendData("Down");
+            lastInput.action = "Down";
+            predictionInput(lastInput, ball, batC1, batC2, scoreC1, scoreC2, hud, separators, window, ss);
+            oss << lastInput.action << " " << lastInput.sequenceNumber;
+            signalSendData(oss.str());
             status= threadStatus;
             if (status != OK)
             {
@@ -345,9 +370,11 @@ int sendEvent(bool focus, Ball& ball, Bat& batC1, Bat& batC2, Text& hud, Rectang
         }
         else
         {
+            lastInput.action = "NOT";
+            predictionInput(lastInput, ball, batC1, batC2, scoreC1, scoreC2, hud, separators, window, ss);
             cout << endl<< "(CLIENT) fenetre active mais AUCUN MOUV" << endl;
-            predictionInput("NOT",ball,batC1,batC2,scoreC1,scoreC2,hud,separators,window,ss);
-            signalSendData("NOT");
+            oss << lastInput.action << " " << lastInput.sequenceNumber;
+            signalSendData(oss.str());
             status= threadStatus;
             if (status != OK)
             {
@@ -362,9 +389,13 @@ int sendEvent(bool focus, Ball& ball, Bat& batC1, Bat& batC2, Text& hud, Rectang
     }
     else
     {
+        
+        lastInput.action = "NOT";
+        predictionInput(lastInput, ball, batC1, batC2, scoreC1, scoreC2, hud, separators, window, ss);
+        cout << endl<< "(CLIENT) fenetre active mais AUCUN MOUV" << endl;
         cout << endl<< "(CLIENT)Fenetre non active" << endl;
-        predictionInput("NOT",ball,batC1,batC2,scoreC1,scoreC2,hud,separators,window,ss);
-        signalSendData("NOT");
+        oss << lastInput.action << " " << lastInput.sequenceNumber;
+        signalSendData(oss.str());
         status= threadStatus;
         if (status != OK)
         {
@@ -380,25 +411,25 @@ int sendEvent(bool focus, Ball& ball, Bat& batC1, Bat& batC2, Text& hud, Rectang
 }
 
 
-void predictionInput(string moveType,Ball& ball,Bat& batC1,Bat& batC2 , int& scoreC1, int& scoreC2, Text& hud, RectangleShape (&separators)[16], RenderWindow& window, stringstream& ss)
+void predictionInput(Input& input,Ball& ball,Bat& batC1,Bat& batC2 , int& scoreC1, int& scoreC2, Text& hud, RectangleShape (&separators)[16], RenderWindow& window, stringstream& ss)
 {
 
     // Mettre à jour l'état du jeu en fonction de l'entrée
-    if (moveType == "Up")
+    if (input.action == "Up")
     {
         if (batC1.getPosition().top > 0)
         {
             batC1.moveUp();
         }
     }
-    else if (moveType == "Down")
+    else if (input.action == "Down")
     {
         if (batC1.getPosition().top < windowHeight - batC1.getShape().getSize().y)
         {
             batC1.moveDown();
         }
     }
-    else if (moveType == "NOT")
+    else if (input.action == "NOT")
     {
         // Ne rien faire
     }
@@ -406,12 +437,13 @@ void predictionInput(string moveType,Ball& ball,Bat& batC1,Bat& batC2 , int& sco
     {
         cout << "(CLIENT)ERREUR: Action inconnue" << endl;
     }
+    input.sequenceNumber=lastConfirmedServerSequenceNumber+1;
+    inputHistory.push(input);
 
     HandleBall(ball, batC1, batC2, scoreC1, scoreC2);
     ss.str("");
     ss << scoreC1 << "\t" << scoreC2;
 
-    cout<<"(CLIENT)Affichage new terrain predit"<<endl;
     afficheTerrain(hud, separators, window, ss, ball, batC1, batC2);
 }
 
@@ -429,8 +461,6 @@ void HandleBall(Ball &ball, Bat &batC1, Bat &batC2, int &scoreC1, int &scoreC2)
     {
         ball.hitSide(windowWidth / 2, windowHeight / 2);
         scoreC2++;
-        batC1.setYPosition(windowHeight / 2);
-        batC2.setYPosition(windowHeight / 2);
     }
 
     // Handle ball hitting right side
@@ -438,8 +468,6 @@ void HandleBall(Ball &ball, Bat &batC1, Bat &batC2, int &scoreC1, int &scoreC2)
     {
         ball.hitSide(windowWidth / 2, windowHeight / 2);
         scoreC1++;
-        batC1.setYPosition(windowHeight / 2);
-        batC2.setYPosition(windowHeight / 2);
     }
 
     // Has the ball hit the bat?
@@ -460,29 +488,38 @@ void finalDataDeserialization(string AllData, Ball& ball, Bat& batC1, Bat& batC2
     float ballLeft, ballTop,
         batC1Left, batC1Top,
         batC2Left, batC2Top;
-    int tempScoreC1, tempScoreC2;
 
-    iss >> ballLeft >> ballTop >> tempScoreC1 >> tempScoreC2 >> batC1Left >> batC1Top >> batC2Left >> batC2Top;
+    iss >> ballLeft >> ballTop >> scoreC1 >> scoreC2 >> batC1Left >> batC1Top >> batC2Left >> batC2Top>> lastConfirmedServerSequenceNumber;
 
-    //serveur reconciliation
-    if (batC1.getPosition().left==batC1Left && batC1.getPosition().top==batC1Top && batC2.getPosition().left==batC2Left && batC2.getPosition().top==batC2Top && ball.getPosition().left==ballLeft && ball.getPosition().top==ballTop && scoreC1==tempScoreC1 && scoreC2==tempScoreC2)
+
+    cout <<endl<< endl<<"(CLIENT)History sequenceNumber=" << inputHistory.front().sequenceNumber << endl;
+    cout<<endl<<"(CLIENT)lastConfirmedServerSequenceNumber="<<lastConfirmedServerSequenceNumber<<endl;
+    // serveur Reconciliation
+    if(inputHistory.front().sequenceNumber == lastConfirmedServerSequenceNumber)
     {
-        cout<<"!! (CLIENT)Pas de correction à faire car client a bien predit !!"<<endl;
-        isCorrectPrediction=true;
-    }
-    else
-    {
-        cout<<"!! (CLIENT)Correction a faire car client a mal predit !! "<<endl;
-        ball.setPosition(ballLeft, ballTop);
-        batC1.setPosition(batC1Left, batC1Top);
-        batC2.setPosition(batC2Left, batC2Top);
-        scoreC1=tempScoreC1;
-        scoreC2=tempScoreC2;
-        ss.str("");
-        ss << scoreC1 << "\t" << scoreC2;
-        isCorrectPrediction=false;
-    }
+        if(batC1.getPosition().left ==batC1Left && batC1.getPosition().top== batC1Top)
+        {
+            cout<<"(CLIENT)Position du batC1(J1) confirmée par le serveur"<<endl;
+            lastInput.predictionStateResult=true;
 
+
+            batC2.setPosition(batC2Left,batC2Top);
+            ball.setPosition(ballLeft,ballTop);
+            
+        }
+        else
+        {
+            cout<<"(CLIENT)ERREUR: Position du batC1(J1) non confirmée par le serveur"<<endl;
+            ball.setPosition(ballLeft,ballTop);
+            batC1.setPosition(batC1Left,batC1Top);
+            batC2.setPosition(batC2Left,batC2Top);
+            ss.str("");
+            ss << scoreC1 << "\t" << scoreC2;
+            
+            lastInput.predictionStateResult=false;
+        }
+    }
+    
 }
 
 void afficheTerrain(Text &hud, RectangleShape (&separators)[16], RenderWindow &window,stringstream& ss, Ball& ball, Bat& batC1, Bat& batC2)
@@ -509,6 +546,7 @@ void afficheTerrain(Text &hud, RectangleShape (&separators)[16], RenderWindow &w
 }
 int stopConnection()
 {
+    //int status= client->send( (char*)("STOP"));
     signalSendData("STOP");
     int status= threadStatus;
     if(status != OK)
@@ -529,16 +567,18 @@ void *FctThreadReceive(void *setting)
 {
     struct timespec wait;
     // Conversion des millisecondes en secondes et nanosecondes
-    wait.tv_sec = /*0*/Lag_ms / 1000;
-    wait.tv_nsec = (Lag_ms % 1000) * 1000000/*Lag_ms* 1000000*/;
+    wait.tv_sec = forLag / 1000;
+    wait.tv_nsec = (forLag % 1000) * 1000000;
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
     {
+-
         nanosleep(&wait, NULL);
         char Data[1024];
-        int status = client->receiveNonBlocking(Data, 100);
+        int status = client->receiveNonBlocking(Data, 200);
 
+        
         nanosleep(&wait, NULL);
 
         if (status == TIMEOUT)
@@ -619,8 +659,8 @@ void *FctThreadSend(void *setting)
 {
     struct timespec wait;
     // Conversion des millisecondes en secondes et nanosecondes
-    wait.tv_sec = /*0*/Lag_ms / 1000;
-    wait.tv_nsec = (Lag_ms % 1000) * 1000000/*Lag_ms* 1000000*/;
+    wait.tv_sec = forLag / 1000;
+    wait.tv_nsec = (forLag % 1000) * 1000000;
 
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     while (1)
@@ -638,8 +678,8 @@ void *FctThreadSend(void *setting)
         cout << "(CLIENT threadSend)Prêt à envoyer : " << data << endl;
 
         int status = client->send((char *)data.c_str());
-        
         nanosleep(&wait, NULL);
+
         if (status != OK)
         {
             // Gérer l'erreur de send
