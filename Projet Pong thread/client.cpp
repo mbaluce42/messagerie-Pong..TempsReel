@@ -410,7 +410,6 @@ void afficheTerrain(Text &hud, RectangleShape (&separators)[16], RenderWindow &w
 }
 int stopConnection()
 {
-    //int status= client->send( (char*)("STOP"));
     signalSendData("STOP");
     int status= threadStatus;
     if(status != OK)
@@ -439,7 +438,7 @@ void *FctThreadReceive(void *setting)
     {
         nanosleep(&wait, NULL);
         char Data[1024];
-        int status = client->receiveNonBlocking(Data, 200);
+        int status = client->receiveNonBlocking(Data, 100);
 
         nanosleep(&wait, NULL);
 

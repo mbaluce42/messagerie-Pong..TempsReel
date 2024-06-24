@@ -12,8 +12,8 @@ class Ball
         // A RectangleShape object called ref
         RectangleShape ballShape;
     
-        float xVelocity = 9.9f;
-        float yVelocity = 9.9f;
+        float xVelocity = .2f;
+        float yVelocity = .2f;
     
     public:
         Ball(float startX, float startY);

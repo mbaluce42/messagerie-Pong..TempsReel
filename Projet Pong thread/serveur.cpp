@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
     struct timespec fin;
 
     const int tickRate = 64; // Taux de rafraîchissement en Hz
-    const float tickDuration = 10000.f / tickRate; // Durée d'une boucle en microsecondes
+    const float tickDuration = 1100.f / tickRate; // Durée d'une boucle en microsecondes
 
     //init game
     cout << "(SERVEUR)Initialisation du jeu en cours ..........." << endl;
@@ -246,6 +246,7 @@ int main(int argc, char *argv[])
             ts.tv_sec = 0;
             ts.tv_nsec = (tickDuration - diff) * 1000000; // Convertir le temps restant en nanosecondes
             nanosleep(&ts, NULL); // Attendre le temps restant
+            cout<<endl<<endl<<endl<<endl<<"(SERVEUR)Attente de "<<(tickDuration - diff)<<" ms"<<endl;
 
         }
 
@@ -689,7 +690,7 @@ void *FctThreadReceiveClient1(void *setting)
         int status1;
 
         // Reception du client 1
-        status1 = client1->receiveNonBlocking(Data1, 200);
+        status1 = client1->receiveNonBlocking(Data1, 100);
         handleThreadReceiveStatus(status1, Data1, true);
     }
     pthread_exit(NULL);
@@ -704,7 +705,7 @@ void *FctThreadReceiveClient2(void *setting)
         int status2;
 
         // Reception du client 2
-        status2 = client2->receiveNonBlocking(Data2, 200);
+        status2 = client2->receiveNonBlocking(Data2, 100);
         handleThreadReceiveStatus(status2, Data2, false);
     }
     pthread_exit(NULL);
